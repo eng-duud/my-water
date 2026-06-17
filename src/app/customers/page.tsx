@@ -28,7 +28,6 @@ export default function CustomersPage() {
   const [name, setName] = useState("");
   const [phone, setPhone] = useState("");
   const [address, setAddress] = useState("");
-  const [workUnits, setWorkUnits] = useState(1);
   const [isActive, setIsActive] = useState(true);
   const [meterNumber, setMeterNumber] = useState("");
   const [photoUrl, setPhotoUrl] = useState("");
@@ -58,7 +57,6 @@ export default function CustomersPage() {
     setName("");
     setPhone("");
     setAddress("");
-    setWorkUnits(1);
     setIsActive(true);
     setMeterNumber("");
     setPhotoUrl("");
@@ -71,7 +69,6 @@ export default function CustomersPage() {
     setName(c.name);
     setPhone(c.phone || "");
     setAddress(c.address || "");
-    setWorkUnits(c.workUnits);
     setIsActive(c.isActive);
     setMeterNumber(c.meterNumber || "");
     setPhotoUrl(c.photoUrl || "");
@@ -108,7 +105,6 @@ export default function CustomersPage() {
           name,
           phone: phone || null,
           address: address || null,
-          workUnits: Number(workUnits),
           isActive,
           meterNumber: meterNumber || null,
           photoUrl: photoUrl || null,
@@ -141,7 +137,7 @@ export default function CustomersPage() {
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
           <h2 className="text-xl font-bold text-slate-800">إدارة المشتركين</h2>
-          <p className="text-xs text-slate-500 mt-0.5">تسجيل وتعديل بيانات المشتركين وتحديد وحدات العمل لكل مشترك.</p>
+          <p className="text-xs text-slate-500 mt-0.5">تسجيل وتعديل بيانات المشتركين وتحديد حالة الحساب.</p>
         </div>
         <button
           onClick={openAddModal}
@@ -178,7 +174,6 @@ export default function CustomersPage() {
                   <th className="p-4">الاسم</th>
                   <th className="p-4">الهاتف</th>
                   <th className="p-4">العنوان</th>
-                  <th className="p-4">وحدات العمل</th>
                   <th className="p-4">رقم العداد</th>
                   <th className="p-4">الحالة</th>
                   <th className="p-4 text-center">الإجراءات</th>
@@ -206,7 +201,6 @@ export default function CustomersPage() {
                     </td>
                     <td className="p-4 text-slate-600">{c.phone || "—"}</td>
                     <td className="p-4 text-slate-600">{c.address || "—"}</td>
-                    <td className="p-4 font-semibold text-slate-700">{c.workUnits}</td>
                     <td className="p-4 text-slate-600">{c.meterNumber || "—"}</td>
                     <td className="p-4">
                       <span
@@ -301,41 +295,46 @@ export default function CustomersPage() {
                 </div>
               </div>
 
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-xs font-semibold text-slate-600 mb-1">وحدات العمل (الرسوم الثابتة)</label>
-                  <input
-                    type="number"
-                    required
-                    min={0}
-                    value={workUnits}
-                    onChange={(e) => setWorkUnits(parseInt(e.target.value))}
-                    className="w-full border border-slate-200 rounded-xl px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500"
-                  />
-                </div>
-                <div>
-                  <label className="block text-xs font-semibold text-slate-600 mb-1">رقم العداد (اختياري)</label>
-                  <input
-                    type="text"
-                    value={meterNumber}
-                    onChange={(e) => setMeterNumber(e.target.value)}
-                    className="w-full border border-slate-200 rounded-xl px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500"
-                    placeholder="رقم العداد المطبوع"
-                  />
+              {/* Account Status Field */}
+              <div>
+                <label className="block text-xs font-semibold text-slate-600 mb-1">حالة الحساب</label>
+                <div className="grid grid-cols-2 gap-3">
+                  <button
+                    type="button"
+                    onClick={() => setIsActive(true)}
+                    className={`flex items-center justify-center space-x-2 space-x-reverse px-4 py-2.5 rounded-xl border text-sm font-bold transition-colors ${
+                      isActive
+                        ? 'bg-emerald-50 border-emerald-300 text-emerald-700'
+                        : 'bg-white border-slate-200 text-slate-400'
+                    }`}
+                  >
+                    <span className={`w-2.5 h-2.5 rounded-full ${isActive ? 'bg-emerald-500' : 'bg-slate-200'}`} />
+                    <span>نشط</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setIsActive(false)}
+                    className={`flex items-center justify-center space-x-2 space-x-reverse px-4 py-2.5 rounded-xl border text-sm font-bold transition-colors ${
+                      !isActive
+                        ? 'bg-rose-50 border-rose-300 text-rose-700'
+                        : 'bg-white border-slate-200 text-slate-400'
+                    }`}
+                  >
+                    <span className={`w-2.5 h-2.5 rounded-full ${!isActive ? 'bg-rose-500' : 'bg-slate-200'}`} />
+                    <span>غير نشط</span>
+                  </button>
                 </div>
               </div>
 
-              <div className="flex items-center space-x-3 space-x-reverse">
+              <div>
+                <label className="block text-xs font-semibold text-slate-600 mb-1">رقم العداد (اختياري)</label>
                 <input
-                  type="checkbox"
-                  id="isActive"
-                  checked={isActive}
-                  onChange={(e) => setIsActive(e.target.checked)}
-                  className="rounded text-brand-600 focus:ring-brand-500 w-4 h-4 border-slate-300"
+                  type="text"
+                  value={meterNumber}
+                  onChange={(e) => setMeterNumber(e.target.value)}
+                  className="w-full border border-slate-200 rounded-xl px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500"
+                  placeholder="رقم العداد المطبوع"
                 />
-                <label htmlFor="isActive" className="text-sm font-semibold text-slate-700">
-                  الحساب نشط (يدخل في دورات الفوترة التلقائية)
-                </label>
               </div>
 
               {/* Cloudinary Image Upload */}

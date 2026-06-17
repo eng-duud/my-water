@@ -9,7 +9,6 @@ const createCustomerSchema = z.object({
   name: z.string().min(1, 'اسم العميل مطلوب'),
   phone: z.string().optional().nullable(),
   address: z.string().optional().nullable(),
-  workUnits: z.number().int().min(0).default(1),
   isActive: z.boolean().default(true),
   meterNumber: z.string().optional().nullable(),
   photoUrl: z.string().optional().nullable(),

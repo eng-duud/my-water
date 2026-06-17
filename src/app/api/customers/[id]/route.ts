@@ -7,7 +7,6 @@ const updateCustomerSchema = z.object({
   name: z.string().min(1, 'اسم العميل مطلوب'),
   phone: z.string().optional().nullable(),
   address: z.string().optional().nullable(),
-  workUnits: z.number().int().min(0),
   isActive: z.boolean(),
   meterNumber: z.string().optional().nullable(),
   photoUrl: z.string().optional().nullable(),
