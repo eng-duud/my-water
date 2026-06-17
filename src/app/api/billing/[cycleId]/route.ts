@@ -36,6 +36,10 @@ export async function GET(
       },
     });
 
+    if (!cycle) {
+      return NextResponse.json({ error: 'دورة الفوترة غير موجودة' }, { status: 404 });
+    }
+
     const billsWithPrevious = await Promise.all(
       (cycle.bills || []).map(async (bill) => {
         const previousBill = await prisma.bill.findFirst({
