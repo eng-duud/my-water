@@ -5,6 +5,7 @@ interface BillingParams {
   workUnits: number;
   previousReading: Decimal | number | string;
   currentReading: Decimal | number | string;
+  consumptionOverride?: Decimal | number | string;
   workUnitPrice?: Decimal | number | string;
   tier1Limit?: Decimal | number | string;
   tier1Price?: Decimal | number | string;
@@ -30,8 +31,10 @@ export function calculateBill(params: BillingParams): BillingResult {
   const t1Price = new Decimal(params.tier1Price ?? DEFAULT_PRICING.tier1Price);
   const t2Price = new Decimal(params.tier2Price ?? DEFAULT_PRICING.tier2Price);
 
-  // Consumption = Current - Previous
-  const consumption = Decimal.max(current.minus(previous), new Decimal(0));
+  // Consumption = override if provided, else Current - Previous
+  const consumption = params.consumptionOverride !== undefined
+    ? new Decimal(params.consumptionOverride)
+    : Decimal.max(current.minus(previous), new Decimal(0));
   
   // Work units fee
   const workUnitsTotal = new Decimal(params.workUnits).times(wUnitPrice);

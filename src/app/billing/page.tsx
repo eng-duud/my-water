@@ -76,6 +76,7 @@ export default function BillingPage() {
   }>>({});
   const [unitTypes, setUnitTypes] = useState<Record<string, UnitType>>({});
   const [savingReadings, setSavingReadings] = useState(false);
+  const [savingBillId, setSavingBillId] = useState<string | null>(null);
   const [uploadingBillId, setUploadingBillId] = useState<string | null>(null);
 
   const fetchCycles = async () => {
@@ -266,6 +267,46 @@ export default function BillingPage() {
     }
   };
 
+  const handleSaveBill = async (billId: string) => {
+    if (!activeCycle) return;
+    const bill = bills.find(b => b.id === billId);
+    if (!bill) return;
+    const data = readings[billId];
+    if (!data) return;
+
+    try {
+      setSavingBillId(billId);
+      const entry: any = {
+        currentReading: data.currentReading,
+        workUnits: data.workUnits,
+        consumption: data.consumptionManual ? data.consumption : undefined,
+        meterPhotoUrl: data.meterPhotoUrl,
+        notes: data.notes,
+      };
+      if (isPendingMode) {
+        entry.customerId = (bill as any)._customerId;
+      } else {
+        entry.billId = billId;
+      }
+
+      const res = await fetch(`/api/billing/${activeCycle.id}/entries`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ entries: [entry] }),
+      });
+
+      const resData = await res.json();
+      if (!res.ok) throw new Error(resData.error || "فشل حفظ الفاتورة");
+
+      alert("تم حفظ الفاتورة بنجاح!");
+      fetchCycleBills(activeCycle);
+    } catch (err: any) {
+      alert(err.message || "حدث خطأ");
+    } finally {
+      setSavingBillId(null);
+    }
+  };
+
   const handleSaveAll = async () => {
     if (!activeCycle) return;
     try {
@@ -277,6 +318,7 @@ export default function BillingPage() {
         const entry: any = {
           currentReading: data.currentReading,
           workUnits: data.workUnits,
+          consumption: data.consumptionManual ? data.consumption : undefined,
           meterPhotoUrl: data.meterPhotoUrl,
           notes: data.notes,
         };
@@ -447,7 +489,7 @@ export default function BillingPage() {
                       <th className="p-3">المبلغ الإجمالي</th>
                       <th className="p-3">صورة العداد</th>
                       <th className="p-3">ملاحظات</th>
-                      {activeCycle.status === 'ISSUED' && <th className="p-3 text-center">الفاتورة</th>}
+                      <th className="p-3 text-center">الفاتورة</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-100 text-xs">
@@ -597,8 +639,28 @@ export default function BillingPage() {
                             />
                           </td>
 
-                          {activeCycle.status === 'ISSUED' && (
-                            <td className="p-3 text-center">
+                          <td className="p-3 text-center">
+                            {activeCycle.status === 'DRAFT' && (
+                              <div className="flex items-center justify-center space-x-2 space-x-reverse">
+                                <button
+                                  onClick={() => handleSaveBill(b.id)}
+                                  disabled={savingBillId === b.id}
+                                  className="bg-brand-600 hover:bg-brand-700 text-white text-[10px] px-2 py-1 rounded font-bold transition-colors disabled:opacity-50"
+                                >
+                                  {savingBillId === b.id ? '...' : '📥 ترحيل'}
+                                </button>
+                                {!b.id.startsWith('pending_') && (
+                                  <Link
+                                    href={`/print/bill/${b.id}`}
+                                    target="_blank"
+                                    className="bg-slate-100 hover:bg-slate-200 text-slate-800 text-[10px] px-2 py-1 rounded font-bold border border-slate-200"
+                                  >
+                                    🖨️ طباعة
+                                  </Link>
+                                )}
+                              </div>
+                            )}
+                            {activeCycle.status === 'ISSUED' && (
                               <Link
                                 href={`/print/bill/${b.id}`}
                                 target="_blank"
@@ -606,8 +668,8 @@ export default function BillingPage() {
                               >
                                 🖨️ طباعة
                               </Link>
-                            </td>
-                          )}
+                            )}
+                          </td>
                         </tr>
                       );
                     })}

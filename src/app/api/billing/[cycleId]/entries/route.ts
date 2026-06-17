@@ -10,6 +10,7 @@ const batchEntriesSchema = z.object({
       billId: z.string().optional(),
       customerId: z.string().optional(),
       currentReading: z.number().min(0, 'القراءة الحالية يجب أن تكون أكبر من أو تساوي الصفر'),
+      consumption: z.number().min(0).optional(),
       workUnits: z.number().int().min(0).optional(),
       meterPhotoUrl: z.string().optional().nullable(),
       notes: z.string().optional().nullable(),
@@ -141,13 +142,6 @@ export async function POST(
           throw new Error('يجب توفير billId أو customerId');
         }
 
-        const prevReading = Number(bill.previousReading);
-        if (entry.currentReading < prevReading) {
-          throw new Error(
-            `القراءة الحالية (${entry.currentReading}) لا يمكن أن تكون أقل من القراءة السابقة (${prevReading})`
-          );
-        }
-
             // Use provided workUnits if available, otherwise use bill's default
             const effectiveWorkUnits = entry.workUnits !== undefined ? entry.workUnits : bill.workUnits;
 
@@ -156,6 +150,7 @@ export async function POST(
               workUnits: effectiveWorkUnits,
               previousReading: bill.previousReading,
               currentReading: entry.currentReading,
+              consumptionOverride: entry.consumption,
               workUnitPrice: settings.workUnitPrice,
               tier1Limit: settings.tier1Limit,
               tier1Price: settings.tier1PricePerUnit,
