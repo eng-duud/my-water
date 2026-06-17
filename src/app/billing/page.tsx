@@ -68,6 +68,7 @@ export default function BillingPage() {
     meterPhotoUrl: string | null;
     notes: string | null;
     consumption: number;
+    consumptionManual: boolean;
     workUnitsTotal: number;
     unitPrice: number;
     consumptionCost: number;
@@ -131,6 +132,7 @@ export default function BillingPage() {
             meterPhotoUrl: null,
             notes: null,
             consumption: 0,
+            consumptionManual: false,
             workUnitsTotal: 0,
             unitPrice: PRICING.tier1Price,
             consumptionCost: 0,
@@ -160,6 +162,7 @@ export default function BillingPage() {
             meterPhotoUrl: b.meterPhotoUrl,
             notes: b.notes,
             consumption: prevCalc.consumption,
+            consumptionManual: false,
             workUnitsTotal: prevCalc.workUnitsTotal,
             unitPrice: prevCalc.unitPrice,
             consumptionCost: prevCalc.consumptionCost,
@@ -180,7 +183,7 @@ export default function BillingPage() {
     fetchCycles();
   }, []);
 
-  const recalc = (billId: string, overrides?: { currentReading?: number; workUnits?: number }) => {
+  const recalc = (billId: string, overrides?: { currentReading?: number; workUnits?: number; consumption?: number }) => {
     const bill = bills.find(b => b.id === billId);
     if (!bill) return;
     const r = readings[billId];
@@ -190,6 +193,20 @@ export default function BillingPage() {
     const current = overrides?.currentReading ?? r.currentReading;
     const work = overrides?.workUnits ?? r.workUnits;
 
+    let consumption: number;
+    let consumptionManual: boolean;
+
+    if (overrides?.consumption !== undefined) {
+      consumption = overrides.consumption;
+      consumptionManual = true;
+    } else if (r.consumptionManual && overrides?.consumption === undefined && overrides?.currentReading === undefined) {
+      consumption = r.consumption;
+      consumptionManual = true;
+    } else {
+      consumption = Math.max(current - previous, 0);
+      consumptionManual = false;
+    }
+
     const calc = calcClient(previous, current, work);
     setReadings(prev => ({
       ...prev,
@@ -197,11 +214,12 @@ export default function BillingPage() {
         ...prev[billId],
         currentReading: current,
         workUnits: work,
-        consumption: calc.consumption,
+        consumption,
+        consumptionManual,
         workUnitsTotal: calc.workUnitsTotal,
         unitPrice: calc.unitPrice,
-        consumptionCost: calc.consumptionCost,
-        totalAmount: calc.totalAmount,
+        consumptionCost: consumption * calc.unitPrice,
+        totalAmount: calc.workUnitsTotal + consumption * calc.unitPrice,
       }
     }));
   };
@@ -497,8 +515,23 @@ export default function BillingPage() {
                           </td>
 
                           {/* Consumption */}
-                          <td className="p-3 font-bold text-slate-700">
-                            {(ut === 'regular' || ut === 'both') ? ((r?.consumption ?? 0).toFixed(2)) : '0.00'}
+                          <td className="p-3">
+                            {(ut === 'regular' || ut === 'both') ? (
+                              <input
+                                type="number"
+                                step="any"
+                                min={0}
+                                disabled={!canEdit}
+                                value={r?.consumption ?? 0}
+                                onChange={(e) => {
+                                  const val = parseFloat(e.target.value) || 0;
+                                  recalc(b.id, { consumption: val });
+                                }}
+                                className="w-20 border border-slate-200 rounded-lg p-1 text-center font-bold text-slate-700 focus:outline-none focus:ring-1 focus:ring-brand-500 disabled:bg-slate-50 disabled:text-slate-400"
+                              />
+                            ) : (
+                              <span className="font-bold text-slate-700">0.00</span>
+                            )}
                           </td>
 
                           {/* Work Units Total */}

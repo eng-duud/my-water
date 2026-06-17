@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Link from "next/link";
 import { uploadToCloudinary } from "@/lib/cloudinary";
 
 interface Customer {
@@ -21,6 +22,8 @@ export default function CustomersPage() {
   const [searchQuery, setSearchQuery] = useState("");
   const [showModal, setShowModal] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  const [billsModal, setBillsModal] = useState<{ customer: Customer; bills: any[] } | null>(null);
+  const [loadingBills, setLoadingBills] = useState(false);
 
   // Form states
   const [customerId, setCustomerId] = useState<string | null>(null);
@@ -125,6 +128,20 @@ export default function CustomersPage() {
     }
   };
 
+  const openBillsModal = async (c: Customer) => {
+    try {
+      setLoadingBills(true);
+      const res = await fetch(`/api/customers/${c.id}`);
+      if (!res.ok) throw new Error("فشل جلب فواتير المشترك");
+      const data = await res.json();
+      setBillsModal({ customer: c, bills: data.bills || [] });
+    } catch (err: any) {
+      alert(err.message || "حدث خطأ");
+    } finally {
+      setLoadingBills(false);
+    }
+  };
+
   const filteredCustomers = customers.filter(
     (c) =>
       c.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -214,12 +231,20 @@ export default function CustomersPage() {
                       </span>
                     </td>
                     <td className="p-4 text-center">
-                      <button
-                        onClick={() => openEditModal(c)}
-                        className="bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold px-3 py-1.5 rounded-lg transition-colors"
-                      >
-                        ✏️ تعديل
-                      </button>
+                      <div className="flex items-center justify-center space-x-2 space-x-reverse">
+                        <button
+                          onClick={() => openEditModal(c)}
+                          className="bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold px-3 py-1.5 rounded-lg transition-colors"
+                        >
+                          ✏️ تعديل
+                        </button>
+                        <button
+                          onClick={() => openBillsModal(c)}
+                          className="bg-brand-50 hover:bg-brand-100 text-brand-700 text-xs font-bold px-3 py-1.5 rounded-lg transition-colors border border-brand-200"
+                        >
+                          📋 الفواتير
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 ))}
@@ -228,6 +253,66 @@ export default function CustomersPage() {
           </div>
         )}
       </div>
+
+      {/* Bills Modal */}
+      {billsModal && (
+        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4 z-50">
+          <div className="bg-white rounded-2xl shadow-xl border border-slate-200 max-w-2xl w-full p-6 space-y-4 max-h-[90vh] overflow-y-auto">
+            <div className="flex justify-between items-center border-b border-slate-100 pb-3">
+              <h3 className="text-lg font-bold text-slate-800">
+                فواتير المشترك: {billsModal.customer.name}
+              </h3>
+              <button
+                onClick={() => setBillsModal(null)}
+                className="text-slate-400 hover:text-slate-600 text-xl"
+              >
+                ✕
+              </button>
+            </div>
+
+            {loadingBills ? (
+              <div className="text-center py-8 text-slate-400">جاري تحميل الفواتير...</div>
+            ) : billsModal.bills.length === 0 ? (
+              <div className="text-center py-8 text-slate-400 text-sm">لا توجد فواتير لهذا المشترك.</div>
+            ) : (
+              <div className="space-y-3">
+                {billsModal.bills.map((bill: any) => (
+                  <div key={bill.id} className="border border-slate-200 rounded-xl p-4 flex items-center justify-between">
+                    <div className="space-y-1 text-sm">
+                      <div className="font-bold text-slate-800">
+                        الفاتورة رقم: {bill.billNumber}
+                      </div>
+                      <div className="text-xs text-slate-500">
+                        الدورة: {bill.billingCycle?.year}/{String(bill.billingCycle?.month).padStart(2, '0')}
+                        {' | '}
+                        المبلغ: {Number(bill.totalAmount).toLocaleString()} ريال
+                        {' | '}
+                        المدفوع: {Number(bill.paidAmount || 0).toLocaleString()} ريال
+                      </div>
+                      <div className="text-xs text-slate-500">
+                        {(Number(bill.totalAmount) - Number(bill.paidAmount || 0)) > 0 ? (
+                          <span className="text-rose-600 font-semibold">
+                            المتبقي: {(Number(bill.totalAmount) - Number(bill.paidAmount || 0)).toLocaleString()} ريال
+                          </span>
+                        ) : (
+                          <span className="text-emerald-600 font-semibold">مسدد بالكامل</span>
+                        )}
+                      </div>
+                    </div>
+                    <Link
+                      href={`/print/bill/${bill.id}`}
+                      target="_blank"
+                      className="bg-slate-100 hover:bg-slate-200 text-slate-800 text-xs font-bold px-3 py-1.5 rounded-lg border border-slate-200 transition-colors shrink-0"
+                    >
+                      🖨️ طباعة الفاتورة
+                    </Link>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
 
       {/* Add/Edit Modal */}
       {showModal && (
