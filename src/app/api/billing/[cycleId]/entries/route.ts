@@ -10,6 +10,7 @@ const batchEntriesSchema = z.object({
       billId: z.string().optional(),
       customerId: z.string().optional(),
       currentReading: z.number().min(0, 'القراءة الحالية يجب أن تكون أكبر من أو تساوي الصفر'),
+      workUnits: z.number().int().min(0).optional(),
       meterPhotoUrl: z.string().optional().nullable(),
       notes: z.string().optional().nullable(),
     })
@@ -91,50 +92,51 @@ export async function POST(
             },
           });
 
-          if (!bill) {
-            // Create new bill
-            const customer = await tx.customer.findUnique({
-              where: { id: entry.customerId },
-            });
+            if (!bill) {
+              // Create new bill
+              const customer = await tx.customer.findUnique({
+                where: { id: entry.customerId },
+              });
 
-            if (!customer) {
-              throw new Error(`المشترك بالمعرف ${entry.customerId} غير موجود`);
+              if (!customer) {
+                throw new Error(`المشترك بالمعرف ${entry.customerId} غير موجود`);
+              }
+
+              // Get last reading from previous bill
+              const lastBill = await tx.bill.findFirst({
+                where: {
+                  tenantId: TENANT_ID,
+                  customerId: entry.customerId,
+                },
+                orderBy: { createdAt: 'desc' },
+              });
+
+              const prevReading = lastBill ? Number(lastBill.currentReading) : 0;
+              const monthPadded = String(cycle.month).padStart(2, '0');
+              const billNumber = `INV-${cycle.year}${monthPadded}-${customer.accountNumber}`;
+              const effectiveWorkUnits = entry.workUnits !== undefined ? entry.workUnits : customer.workUnits;
+
+              bill = await tx.bill.create({
+                data: {
+                  tenantId: TENANT_ID,
+                  billNumber,
+                  customerId: entry.customerId,
+                  billingCycleId: cycleId,
+                  previousReading: prevReading,
+                  currentReading: entry.currentReading,
+                  consumption: 0,
+                  workUnits: effectiveWorkUnits,
+                  workUnitsTotal: 0,
+                  tier1Units: 0,
+                  tier1Cost: 0,
+                  tier2Units: 0,
+                  tier2Cost: 0,
+                  totalAmount: 0,
+                  paidAmount: 0,
+                  status: 'PENDING',
+                },
+              });
             }
-
-            // Get last reading from previous bill
-            const lastBill = await tx.bill.findFirst({
-              where: {
-                tenantId: TENANT_ID,
-                customerId: entry.customerId,
-              },
-              orderBy: { createdAt: 'desc' },
-            });
-
-            const prevReading = lastBill ? Number(lastBill.currentReading) : 0;
-            const monthPadded = String(cycle.month).padStart(2, '0');
-            const billNumber = `INV-${cycle.year}${monthPadded}-${customer.accountNumber}`;
-
-            bill = await tx.bill.create({
-              data: {
-                tenantId: TENANT_ID,
-                billNumber,
-                customerId: entry.customerId,
-                billingCycleId: cycleId,
-                previousReading: prevReading,
-                currentReading: entry.currentReading,
-                consumption: 0,
-                workUnits: customer.workUnits,
-                workUnitsTotal: 0,
-                tier1Units: 0,
-                tier1Cost: 0,
-                tier2Units: 0,
-                tier2Cost: 0,
-                totalAmount: 0,
-                paidAmount: 0,
-                status: 'PENDING',
-              },
-            });
-          }
         } else {
           throw new Error('يجب توفير billId أو customerId');
         }
@@ -146,33 +148,37 @@ export async function POST(
           );
         }
 
-        // Run calculation engine
-        const calc = calculateBill({
-          workUnits: bill.workUnits,
-          previousReading: bill.previousReading,
-          currentReading: entry.currentReading,
-          workUnitPrice: settings.workUnitPrice,
-          tier1Limit: settings.tier1Limit,
-          tier1Price: settings.tier1PricePerUnit,
-          tier2Price: settings.tier2PricePerUnit,
-        });
+            // Use provided workUnits if available, otherwise use bill's default
+            const effectiveWorkUnits = entry.workUnits !== undefined ? entry.workUnits : bill.workUnits;
 
-        // Update database record
-        const updatedBill = await tx.bill.update({
-          where: { id: bill.id },
-          data: {
-            currentReading: entry.currentReading,
-            consumption: calc.consumption,
-            workUnitsTotal: calc.workUnitsTotal,
-            tier1Units: calc.tier1Units,
-            tier1Cost: calc.tier1Cost,
-            tier2Units: calc.tier2Units,
-            tier2Cost: calc.tier2Cost,
-            totalAmount: calc.totalAmount,
-            meterPhotoUrl: entry.meterPhotoUrl || bill.meterPhotoUrl,
-            notes: entry.notes || bill.notes,
-          },
-        });
+            // Run calculation engine
+            const calc = calculateBill({
+              workUnits: effectiveWorkUnits,
+              previousReading: bill.previousReading,
+              currentReading: entry.currentReading,
+              workUnitPrice: settings.workUnitPrice,
+              tier1Limit: settings.tier1Limit,
+              tier1Price: settings.tier1PricePerUnit,
+              tier2Price: settings.tier2PricePerUnit,
+            });
+
+            // Update database record
+            const updatedBill = await tx.bill.update({
+              where: { id: bill.id },
+              data: {
+                currentReading: entry.currentReading,
+                workUnits: effectiveWorkUnits,
+                consumption: calc.consumption,
+                workUnitsTotal: calc.workUnitsTotal,
+                tier1Units: calc.tier1Units,
+                tier1Cost: calc.tier1Cost,
+                tier2Units: calc.tier2Units,
+                tier2Cost: calc.tier2Cost,
+                totalAmount: calc.totalAmount,
+                meterPhotoUrl: entry.meterPhotoUrl || bill.meterPhotoUrl,
+                notes: entry.notes || bill.notes,
+              },
+            });
 
         updatedBills.push(updatedBill);
       }

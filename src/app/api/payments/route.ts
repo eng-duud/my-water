@@ -1,11 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 import prisma from '@/lib/prisma';
-import { distributePayment } from '@/lib/payment-distribution';
+import { allocatePaymentToSingleBill } from '@/lib/payment-distribution';
 import { TENANT_ID } from '@/lib/constants';
 
 const paymentSchema = z.object({
-  customerId: z.string().min(1, 'معرف العميل مطلوب'),
+  billId: z.string().min(1, 'معرف الفاتورة مطلوب'),
   amount: z.number().positive('مبلغ السداد يجب أن يكون أكبر من الصفر'),
   paymentMethod: z.string().optional().nullable(),
   receiptNumber: z.string().optional().nullable(),
@@ -49,9 +49,13 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const result = await distributePayment({
+    const result = await allocatePaymentToSingleBill({
       tenantId: TENANT_ID,
-      ...parsed.data,
+      billId: parsed.data.billId,
+      amount: parsed.data.amount,
+      paymentMethod: parsed.data.paymentMethod,
+      receiptNumber: parsed.data.receiptNumber,
+      notes: parsed.data.notes,
     });
 
     return NextResponse.json(result, { status: 201 });

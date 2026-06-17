@@ -36,6 +36,26 @@ interface Bill {
   };
 }
 
+type UnitType = 'regular' | 'work' | 'both';
+
+const PRICING = {
+  workUnitPrice: 2000,
+  tier1Limit: 4,
+  tier1Price: 700,
+  tier2Price: 1000,
+};
+
+function calcClient(previous: number, current: number, workUnits: number) {
+  const consumption = Math.max(current - previous, 0);
+  const workUnitsTotal = workUnits * PRICING.workUnitPrice;
+  const tier1Units = Math.min(consumption, PRICING.tier1Limit);
+  const tier1Cost = tier1Units * PRICING.tier1Price;
+  const tier2Units = Math.max(consumption - PRICING.tier1Limit, 0);
+  const tier2Cost = tier2Units * PRICING.tier2Price;
+  const totalAmount = workUnitsTotal + tier1Cost + tier2Cost;
+  return { consumption, workUnitsTotal, tier1Units, tier1Cost, tier2Units, tier2Cost, totalAmount };
+}
+
 export default function BillingPage() {
   const [cycles, setCycles] = useState<BillingCycle[]>([]);
   const [activeCycle, setActiveCycle] = useState<BillingCycle | null>(null);
@@ -44,24 +64,20 @@ export default function BillingPage() {
   const [loadingBills, setLoadingBills] = useState(false);
   const [isPendingMode, setIsPendingMode] = useState(false);
 
-  // Editing state
   const [readings, setReadings] = useState<Record<string, {
     currentReading: number;
+    workUnits: number;
     meterPhotoUrl: string | null;
     notes: string | null;
     consumption: number;
+    workUnitsTotal: number;
+    tier1Cost: number;
+    tier2Cost: number;
     totalAmount: number;
   }>>({});
+  const [unitTypes, setUnitTypes] = useState<Record<string, UnitType>>({});
   const [savingReadings, setSavingReadings] = useState(false);
   const [uploadingBillId, setUploadingBillId] = useState<string | null>(null);
-
-  // Pricing constants (defaults)
-  const PRICING = {
-    workUnitPrice: 2000,
-    tier1Limit: 4,
-    tier1Price: 700,
-    tier2Price: 1000,
-  };
 
   const fetchCycles = async () => {
     try {
@@ -85,7 +101,6 @@ export default function BillingPage() {
       if (!res.ok) throw new Error("فشل جلب فواتير الدورة");
       const data = await res.json();
 
-      // Pending mode: cycle is DRAFT with no bills yet
       if (data.pendingCustomers && data.pendingCustomers.length > 0) {
         setIsPendingMode(true);
         const virtualBills = data.pendingCustomers.map((c: any) => ({
@@ -108,32 +123,52 @@ export default function BillingPage() {
         }));
         setBills(virtualBills);
 
-        const initialReadings: typeof readings = {};
+        const initR: typeof readings = {};
+        const initU: Record<string, UnitType> = {};
         virtualBills.forEach((b: any) => {
-          initialReadings[b.id] = {
+          initU[b.id] = 'regular';
+          initR[b.id] = {
             currentReading: Number(b.previousReading),
+            workUnits: 0,
             meterPhotoUrl: null,
             notes: null,
             consumption: 0,
+            workUnitsTotal: 0,
+            tier1Cost: 0,
+            tier2Cost: 0,
             totalAmount: 0,
           };
         });
-        setReadings(initialReadings);
+        setReadings(initR);
+        setUnitTypes(initU);
       } else {
         setIsPendingMode(false);
-        setBills(data.bills || []);
+        const existingBills = data.bills || [];
+        setBills(existingBills);
 
-        const initialReadings: typeof readings = {};
-        (data.bills || []).forEach((b: Bill) => {
-          initialReadings[b.id] = {
+        const initR: typeof readings = {};
+        const initU: Record<string, UnitType> = {};
+        existingBills.forEach((b: Bill) => {
+          const consumption = Number(b.consumption);
+          const work = b.workUnits;
+          if (work > 0 && consumption > 0) initU[b.id] = 'both';
+          else if (work > 0) initU[b.id] = 'work';
+          else initU[b.id] = 'regular';
+
+          initR[b.id] = {
             currentReading: Number(b.currentReading),
+            workUnits: work,
             meterPhotoUrl: b.meterPhotoUrl,
             notes: b.notes,
-            consumption: Number(b.consumption),
+            consumption: consumption,
+            workUnitsTotal: Number(b.workUnitsTotal),
+            tier1Cost: Number(b.tier1Cost),
+            tier2Cost: Number(b.tier2Cost),
             totalAmount: Number(b.totalAmount),
           };
         });
-        setReadings(initialReadings);
+        setReadings(initR);
+        setUnitTypes(initU);
       }
     } catch (err: any) {
       alert(err.message || "حدث خطأ");
@@ -146,38 +181,57 @@ export default function BillingPage() {
     fetchCycles();
   }, []);
 
-  const calculateClientSide = (billId: string, current: number) => {
+  const recalc = (billId: string, overrides?: { currentReading?: number; workUnits?: number }) => {
     const bill = bills.find(b => b.id === billId);
     if (!bill) return;
+    const r = readings[billId];
+    if (!r) return;
 
     const previous = Number(bill.previousReading);
-    const workUnits = bill.workUnits;
+    const current = overrides?.currentReading ?? r.currentReading;
+    const work = overrides?.workUnits ?? r.workUnits;
 
-    const consumption = Math.max(current - previous, 0);
-    const workUnitsTotal = workUnits * PRICING.workUnitPrice;
-
-    const tier1Units = Math.min(consumption, PRICING.tier1Limit);
-    const tier1Cost = tier1Units * PRICING.tier1Price;
-
-    const tier2Units = Math.max(consumption - PRICING.tier1Limit, 0);
-    const tier2Cost = tier2Units * PRICING.tier2Price;
-
-    const totalAmount = workUnitsTotal + tier1Cost + tier2Cost;
-
+    const calc = calcClient(previous, current, work);
     setReadings(prev => ({
       ...prev,
       [billId]: {
         ...prev[billId],
         currentReading: current,
-        consumption,
-        totalAmount,
+        workUnits: work,
+        consumption: calc.consumption,
+        workUnitsTotal: calc.workUnitsTotal,
+        tier1Cost: calc.tier1Cost,
+        tier2Cost: calc.tier2Cost,
+        totalAmount: calc.totalAmount,
       }
     }));
   };
 
+  const handleUnitTypeChange = (billId: string, unitType: UnitType) => {
+    setUnitTypes(prev => ({ ...prev, [billId]: unitType }));
+    const bill = bills.find(b => b.id === billId);
+    if (!bill) return;
+    const previous = Number(bill.previousReading);
+
+    if (unitType === 'regular') {
+      recalc(billId, { workUnits: 0 });
+    } else if (unitType === 'work') {
+      const defaultWork = bill.workUnits || 1;
+      recalc(billId, { currentReading: previous, workUnits: defaultWork });
+    } else {
+      const defaultWork = bill.workUnits || 1;
+      recalc(billId, { workUnits: defaultWork });
+    }
+  };
+
   const handleReadingChange = (billId: string, value: string) => {
     const numeric = parseFloat(value) || 0;
-    calculateClientSide(billId, numeric);
+    recalc(billId, { currentReading: numeric });
+  };
+
+  const handleWorkUnitsChange = (billId: string, value: string) => {
+    const numeric = parseInt(value) || 0;
+    recalc(billId, { workUnits: numeric });
   };
 
   const handleUploadPhoto = async (billId: string, file: File) => {
@@ -186,10 +240,7 @@ export default function BillingPage() {
       const url = await uploadToCloudinary(file);
       setReadings(prev => ({
         ...prev,
-        [billId]: {
-          ...prev[billId],
-          meterPhotoUrl: url,
-        }
+        [billId]: { ...prev[billId], meterPhotoUrl: url }
       }));
     } catch (err: any) {
       alert(err.message || "فشل تحميل الصورة");
@@ -208,6 +259,7 @@ export default function BillingPage() {
 
         const entry: any = {
           currentReading: data.currentReading,
+          workUnits: data.workUnits,
           meterPhotoUrl: data.meterPhotoUrl,
           notes: data.notes,
         };
@@ -229,7 +281,7 @@ export default function BillingPage() {
 
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "فشل حفظ القراءات");
-      
+
       alert("تم حفظ جميع القراءات بنجاح!");
       fetchCycleBills(activeCycle);
     } catch (err: any) {
@@ -331,7 +383,7 @@ export default function BillingPage() {
                     حالة الدورة: {activeCycle.status === 'ISSUED' ? 'تم الإصدار وقفل التعديل' : 'مسودة - قابلة للتعديل'}
                   </p>
                 </div>
-                
+
                 {activeCycle.status === 'DRAFT' && (
                   <div className="flex space-x-2 space-x-reverse">
                     <button
@@ -362,16 +414,16 @@ export default function BillingPage() {
                 )}
               </div>
 
-              {/* Tabular Form */}
               <div className="overflow-x-auto">
                 <table className="w-full text-right border-collapse">
                   <thead>
                     <tr className="bg-slate-50 border-b border-slate-200 text-xs font-semibold text-slate-600">
                       <th className="p-3">حساب</th>
                       <th className="p-3">الاسم</th>
-                      <th className="p-3">وحدات العمل</th>
+                      <th className="p-3">النوع</th>
                       <th className="p-3">القراءة السابقة</th>
                       <th className="p-3">القراءة الحالية</th>
+                      <th className="p-3">وحدات العمل</th>
                       <th className="p-3">الاستهلاك</th>
                       <th className="p-3">رسوم الوحدات</th>
                       <th className="p-3">الشريحة الأولى</th>
@@ -384,41 +436,100 @@ export default function BillingPage() {
                   </thead>
                   <tbody className="divide-y divide-slate-100 text-xs">
                     {bills.map((b) => {
-                      const currentReadingInput = readings[b.id]?.currentReading ?? 0;
-                      const calculatedConsumption = readings[b.id]?.consumption ?? 0;
-                      const calculatedTotal = readings[b.id]?.totalAmount ?? 0;
-                      const currentPhoto = readings[b.id]?.meterPhotoUrl;
-
-                      const consumption = calculatedConsumption;
-                      const workUnitsTotal = b.workUnits * PRICING.workUnitPrice;
-                      const tier1Units = Math.min(consumption, PRICING.tier1Limit);
-                      const tier1Cost = tier1Units * PRICING.tier1Price;
-                      const tier2Units = Math.max(consumption - PRICING.tier1Limit, 0);
-                      const tier2Cost = tier2Units * PRICING.tier2Price;
+                      const r = readings[b.id];
+                      const ut = unitTypes[b.id] || 'regular';
+                      const calc = r ? calcClient(Number(b.previousReading), r.currentReading, r.workUnits) : null;
+                      const canEdit = activeCycle.status === 'DRAFT';
 
                       return (
                         <tr key={b.id} className="hover:bg-slate-50/50">
                           <td className="p-3 font-bold text-slate-700">{b.customer.accountNumber}</td>
                           <td className="p-3 font-semibold text-slate-800">{b.customer.name}</td>
-                          <td className="p-3 text-slate-600">{b.workUnits}</td>
-                          <td className="p-3 text-slate-600">{Number(b.previousReading)}</td>
+
+                          {/* Type selector */}
                           <td className="p-3">
-                            <input
-                              type="number"
-                              step="any"
-                              disabled={activeCycle.status !== 'DRAFT'}
-                              value={currentReadingInput}
-                              onChange={(e) => handleReadingChange(b.id, e.target.value)}
-                              className="w-24 border border-slate-200 rounded-lg p-1 text-center font-bold text-slate-700 focus:outline-none focus:ring-1 focus:ring-brand-500 disabled:bg-slate-50 disabled:text-slate-400"
-                            />
+                            {canEdit ? (
+                              <select
+                                value={ut}
+                                onChange={(e) => handleUnitTypeChange(b.id, e.target.value as UnitType)}
+                                className="border border-slate-200 rounded-lg p-1 text-[10px] font-semibold focus:outline-none focus:ring-1 focus:ring-brand-500 bg-white"
+                              >
+                                <option value="regular">عادي</option>
+                                <option value="work">وحدات عمل</option>
+                                <option value="both">كلاهما</option>
+                              </select>
+                            ) : (
+                              <span className="text-slate-600">
+                                {ut === 'regular' ? 'عادي' : ut === 'work' ? 'وحدات عمل' : 'كلاهما'}
+                              </span>
+                            )}
                           </td>
-                          <td className="p-3 font-bold text-slate-700">{calculatedConsumption.toFixed(2)}</td>
-                          <td className="p-3 text-slate-600">{workUnitsTotal.toLocaleString()} ريال</td>
-                          <td className="p-3 text-slate-600">{tier1Units.toFixed(2)} × {PRICING.tier1Price} = {tier1Cost.toLocaleString()} ريال</td>
-                          <td className="p-3 text-slate-600">{tier2Units.toFixed(2)} × {PRICING.tier2Price} = {tier2Cost.toLocaleString()} ريال</td>
-                          <td className="p-3 font-extrabold text-brand-600">{calculatedTotal.toLocaleString()} ريال</td>
+
+                          {/* Previous Reading */}
+                          <td className="p-3 text-slate-600">
+                            {(ut === 'regular' || ut === 'both') ? Number(b.previousReading) : '—'}
+                          </td>
+
+                          {/* Current Reading */}
                           <td className="p-3">
-                            {activeCycle.status === 'DRAFT' ? (
+                            {(ut === 'regular' || ut === 'both') ? (
+                              <input
+                                type="number"
+                                step="any"
+                                disabled={!canEdit}
+                                value={r?.currentReading ?? Number(b.previousReading)}
+                                onChange={(e) => handleReadingChange(b.id, e.target.value)}
+                                className="w-24 border border-slate-200 rounded-lg p-1 text-center font-bold text-slate-700 focus:outline-none focus:ring-1 focus:ring-brand-500 disabled:bg-slate-50 disabled:text-slate-400"
+                              />
+                            ) : '—'}
+                          </td>
+
+                          {/* Work Units */}
+                          <td className="p-3">
+                            {(ut === 'work' || ut === 'both') ? (
+                              <input
+                                type="number"
+                                min={0}
+                                disabled={!canEdit}
+                                value={r?.workUnits ?? 0}
+                                onChange={(e) => handleWorkUnitsChange(b.id, e.target.value)}
+                                className="w-16 border border-slate-200 rounded-lg p-1 text-center font-bold text-slate-700 focus:outline-none focus:ring-1 focus:ring-brand-500 disabled:bg-slate-50 disabled:text-slate-400"
+                              />
+                            ) : '—'}
+                          </td>
+
+                          {/* Consumption */}
+                          <td className="p-3 font-bold text-slate-700">
+                            {(ut === 'regular' || ut === 'both') ? ((r?.consumption ?? 0).toFixed(2)) : '0.00'}
+                          </td>
+
+                          {/* Work Units Total */}
+                          <td className="p-3 text-slate-600">
+                            {(ut === 'work' || ut === 'both') ? ((r?.workUnitsTotal ?? 0).toLocaleString() + ' ريال') : '—'}
+                          </td>
+
+                          {/* Tier 1 */}
+                          <td className="p-3 text-slate-600">
+                            {(ut === 'regular' || ut === 'both') && calc ? (
+                              <>{calc.tier1Units.toFixed(2)} × {PRICING.tier1Price} = {calc.tier1Cost.toLocaleString()} ريال</>
+                            ) : '—'}
+                          </td>
+
+                          {/* Tier 2 */}
+                          <td className="p-3 text-slate-600">
+                            {(ut === 'regular' || ut === 'both') && calc ? (
+                              <>{calc.tier2Units.toFixed(2)} × {PRICING.tier2Price} = {calc.tier2Cost.toLocaleString()} ريال</>
+                            ) : '—'}
+                          </td>
+
+                          {/* Total */}
+                          <td className="p-3 font-extrabold text-brand-600">
+                            {(r?.totalAmount ?? 0).toLocaleString()} ريال
+                          </td>
+
+                          {/* Photo */}
+                          <td className="p-3">
+                            {canEdit ? (
                               <div className="flex items-center space-x-1 space-x-reverse">
                                 <label className="cursor-pointer bg-slate-100 hover:bg-slate-200 px-2 py-1 rounded text-[10px] font-semibold border border-slate-200">
                                   📸 رفع
@@ -433,35 +544,35 @@ export default function BillingPage() {
                                   />
                                 </label>
                                 {uploadingBillId === b.id && <span className="text-[9px] text-slate-400">جاري الرفع...</span>}
-                                {currentPhoto && (
-                                  <a href={currentPhoto} target="_blank" className="text-emerald-600 text-xs">✔️</a>
+                                {r?.meterPhotoUrl && (
+                                  <a href={r.meterPhotoUrl} target="_blank" className="text-emerald-600 text-xs">✔️</a>
                                 )}
                               </div>
                             ) : (
-                              currentPhoto ? (
-                                <a href={currentPhoto} target="_blank" className="text-brand-600 hover:underline text-[10px]">عرض الصورة</a>
+                              r?.meterPhotoUrl ? (
+                                <a href={r.meterPhotoUrl} target="_blank" className="text-brand-600 hover:underline text-[10px]">عرض الصورة</a>
                               ) : "—"
                             )}
                           </td>
+
+                          {/* Notes */}
                           <td className="p-3">
                             <input
                               type="text"
-                              disabled={activeCycle.status !== 'DRAFT'}
-                              value={readings[b.id]?.notes || ""}
+                              disabled={!canEdit}
+                              value={r?.notes || ""}
                               onChange={(e) => {
                                 const val = e.target.value;
                                 setReadings(prev => ({
                                   ...prev,
-                                  [b.id]: {
-                                    ...prev[b.id],
-                                    notes: val
-                                  }
+                                  [b.id]: { ...prev[b.id], notes: val }
                                 }));
                               }}
                               placeholder="لا يوجد"
                               className="w-28 border border-slate-200 rounded-lg p-1 text-xs focus:outline-none disabled:bg-transparent disabled:border-none"
                             />
                           </td>
+
                           {activeCycle.status === 'ISSUED' && (
                             <td className="p-3 text-center">
                               <Link
