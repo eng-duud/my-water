@@ -36,11 +36,30 @@ export async function GET(
       },
     });
 
-    if (!cycle) {
-      return NextResponse.json({ error: 'دورة الفوترة غير موجودة' }, { status: 404 });
-    }
+    const billsWithPrevious = await Promise.all(
+      (cycle.bills || []).map(async (bill) => {
+        const previousBill = await prisma.bill.findFirst({
+          where: {
+            customerId: bill.customerId,
+            tenantId: TENANT_ID,
+            createdAt: { lt: bill.createdAt },
+          },
+          orderBy: {
+            createdAt: 'desc',
+          },
+        });
+        return {
+          ...bill,
+          previousBillAmount: previousBill ? previousBill.totalAmount : 0,
+          previousBillPaid: previousBill ? previousBill.paidAmount : 0,
+        };
+      })
+    );
 
-    return NextResponse.json(cycle);
+    return NextResponse.json({
+      ...cycle,
+      bills: billsWithPrevious,
+    });
   } catch (error: any) {
     console.error('Fetch cycle detail error:', error);
     return NextResponse.json({ error: 'حدث خطأ أثناء جلب تفاصيل دورة الفوترة' }, { status: 500 });

@@ -26,7 +26,23 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'الفاتورة غير موجودة' }, { status: 404 });
     }
 
-    return NextResponse.json(bill);
+    // Fetch previous bill
+    const previousBill = await prisma.bill.findFirst({
+      where: {
+        customerId: bill.customerId,
+        tenantId: TENANT_ID,
+        createdAt: { lt: bill.createdAt },
+      },
+      orderBy: {
+        createdAt: 'desc',
+      },
+    });
+
+    return NextResponse.json({
+      ...bill,
+      previousBillAmount: previousBill ? previousBill.totalAmount : 0,
+      previousBillPaid: previousBill ? previousBill.paidAmount : 0,
+    });
   } catch (error: any) {
     console.error('Fetch print bill error:', error);
     return NextResponse.json({ error: 'حدث خطأ أثناء جلب الفاتورة' }, { status: 500 });
