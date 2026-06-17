@@ -3,6 +3,7 @@ import { z } from 'zod';
 import prisma from '@/lib/prisma';
 import { TENANT_ID } from '@/lib/constants';
 import { getOrCreateTenant } from '@/lib/tenant';
+import { calculateBill } from '@/lib/billing';
 
 const createCycleSchema = z.object({
   year: z.number().int().min(2000).max(2100),
@@ -64,12 +65,15 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Create billing cycle and pre-generate draft bills for all active customers in a transaction
+    // Create billing cycle and pre-generate calculated bills for all active customers
     const cycle = await prisma.$transaction(async (tx: any) => {
       const tenantSettings = await tx.tenantSettings.findUnique({
         where: { tenantId: TENANT_ID },
       });
       const workUnitPrice = tenantSettings?.workUnitPrice || 2000;
+      const tier1Limit = tenantSettings?.tier1Limit || 4;
+      const tier1Price = tenantSettings?.tier1PricePerUnit || 700;
+      const tier2Price = tenantSettings?.tier2PricePerUnit || 1000;
 
       // Create cycle
       const newCycle = await tx.billingCycle.create({
@@ -89,9 +93,9 @@ export async function POST(request: NextRequest) {
         },
       });
 
-      // For each customer, generate a draft bill
+      // For each customer, generate a calculated bill
       for (const customer of customers) {
-        // Find latest meter reading from previous cycles (ISSUED or CLOSED or even DRAFT)
+        // Find latest meter reading from previous cycles
         const lastBill = await tx.bill.findFirst({
           where: {
             tenantId: TENANT_ID,
@@ -102,16 +106,26 @@ export async function POST(request: NextRequest) {
           },
         });
 
-        const prevReading = lastBill ? lastBill.currentReading : 0;
+        const prevReading = lastBill ? Number(lastBill.currentReading) : 0;
         const workUnits = customer.workUnits;
-        const workUnitsTotal = prevReading ? 0 : 0; // Wait, we calculate these below
 
-        // Let's formulate invoice number: INV-{year}{month_padded}-{customerAccountNumber}
+        // Invoice number: INV-{year}{month_padded}-{customerAccountNumber}
         const monthPadded = String(month).padStart(2, '0');
         const billNumber = `INV-${year}${monthPadded}-${customer.accountNumber}`;
 
-        // Initial default calculation for draft: consumption = 0
-        const initialWorkUnitsTotal = Number(workUnits) * Number(workUnitPrice);
+        // Calculate consumption: current = prevReading + workUnits (default consumption = workUnits)
+        const currentReading = prevReading + workUnits;
+
+        // Run calculation engine
+        const calc = calculateBill({
+          workUnits,
+          previousReading: prevReading,
+          currentReading,
+          workUnitPrice,
+          tier1Limit,
+          tier1Price,
+          tier2Price,
+        });
 
         await tx.bill.create({
           data: {
@@ -120,15 +134,15 @@ export async function POST(request: NextRequest) {
             customerId: customer.id,
             billingCycleId: newCycle.id,
             previousReading: prevReading,
-            currentReading: prevReading, // draft default
-            consumption: 0,
+            currentReading,
+            consumption: calc.consumption,
             workUnits,
-            workUnitsTotal: initialWorkUnitsTotal,
-            tier1Units: 0,
-            tier1Cost: 0,
-            tier2Units: 0,
-            tier2Cost: 0,
-            totalAmount: initialWorkUnitsTotal,
+            workUnitsTotal: calc.workUnitsTotal,
+            tier1Units: calc.tier1Units,
+            tier1Cost: calc.tier1Cost,
+            tier2Units: calc.tier2Units,
+            tier2Cost: calc.tier2Cost,
+            totalAmount: calc.totalAmount,
             paidAmount: 0,
             status: 'PENDING',
           },

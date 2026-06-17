@@ -48,7 +48,6 @@ export default function BillingPage() {
     currentReading: number;
     meterPhotoUrl: string | null;
     notes: string | null;
-    // client side calculations
     consumption: number;
     totalAmount: number;
   }>>({});
@@ -86,7 +85,7 @@ export default function BillingPage() {
       const data = await res.json();
       setBills(data.bills || []);
 
-      // Initialize readings state
+      // Initialize readings state with calculated values
       const initialReadings: typeof readings = {};
       (data.bills || []).forEach((b: Bill) => {
         initialReadings[b.id] = {
@@ -290,7 +289,7 @@ export default function BillingPage() {
                       disabled={savingReadings}
                       className="bg-slate-800 hover:bg-slate-900 text-white font-bold text-sm px-4 py-2 rounded-xl transition-colors disabled:opacity-50"
                     >
-                      💾 حفظ جميع القراءات
+                      💾 حفظ التعديلات
                     </button>
                     <button
                       onClick={handleIssueCycle}
@@ -324,6 +323,9 @@ export default function BillingPage() {
                       <th className="p-3">القراءة السابقة</th>
                       <th className="p-3">القراءة الحالية</th>
                       <th className="p-3">الاستهلاك</th>
+                      <th className="p-3">رسوم الوحدات</th>
+                      <th className="p-3">الشريحة الأولى</th>
+                      <th className="p-3">الشريحة الثانية</th>
                       <th className="p-3">المبلغ الإجمالي</th>
                       <th className="p-3">صورة العداد</th>
                       <th className="p-3">ملاحظات</th>
@@ -336,6 +338,13 @@ export default function BillingPage() {
                       const calculatedConsumption = readings[b.id]?.consumption ?? 0;
                       const calculatedTotal = readings[b.id]?.totalAmount ?? 0;
                       const currentPhoto = readings[b.id]?.meterPhotoUrl;
+
+                      const consumption = calculatedConsumption;
+                      const workUnitsTotal = b.workUnits * PRICING.workUnitPrice;
+                      const tier1Units = Math.min(consumption, PRICING.tier1Limit);
+                      const tier1Cost = tier1Units * PRICING.tier1Price;
+                      const tier2Units = Math.max(consumption - PRICING.tier1Limit, 0);
+                      const tier2Cost = tier2Units * PRICING.tier2Price;
 
                       return (
                         <tr key={b.id} className="hover:bg-slate-50/50">
@@ -354,6 +363,9 @@ export default function BillingPage() {
                             />
                           </td>
                           <td className="p-3 font-bold text-slate-700">{calculatedConsumption.toFixed(2)}</td>
+                          <td className="p-3 text-slate-600">{workUnitsTotal.toLocaleString()} ريال</td>
+                          <td className="p-3 text-slate-600">{tier1Units.toFixed(2)} × {PRICING.tier1Price} = {tier1Cost.toLocaleString()} ريال</td>
+                          <td className="p-3 text-slate-600">{tier2Units.toFixed(2)} × {PRICING.tier2Price} = {tier2Cost.toLocaleString()} ريال</td>
                           <td className="p-3 font-extrabold text-brand-600">{calculatedTotal.toLocaleString()} ريال</td>
                           <td className="p-3">
                             {activeCycle.status === 'DRAFT' ? (
