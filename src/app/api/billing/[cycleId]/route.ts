@@ -40,6 +40,44 @@ export async function GET(
       return NextResponse.json({ error: 'دورة الفوترة غير موجودة' }, { status: 404 });
     }
 
+    // If cycle is DRAFT and has no bills, return all active customers for data entry
+    if (cycle.status === 'DRAFT' && cycle.bills.length === 0) {
+      const customers = await prisma.customer.findMany({
+        where: { tenantId: TENANT_ID, isActive: true },
+        orderBy: { accountNumber: 'asc' },
+      });
+
+      const customersWithReading = await Promise.all(
+        customers.map(async (customer) => {
+          const lastBill = await prisma.bill.findFirst({
+            where: {
+              tenantId: TENANT_ID,
+              customerId: customer.id,
+            },
+            orderBy: { createdAt: 'desc' },
+          });
+          const prevReading = lastBill ? Number(lastBill.currentReading) : 0;
+          const monthPadded = String(cycle.month).padStart(2, '0');
+          return {
+            customerId: customer.id,
+            billNumber: `INV-${cycle.year}${monthPadded}-${customer.accountNumber}`,
+            previousReading: prevReading,
+            workUnits: customer.workUnits,
+            customer: {
+              accountNumber: customer.accountNumber,
+              name: customer.name,
+            },
+          };
+        })
+      );
+
+      return NextResponse.json({
+        ...cycle,
+        bills: [],
+        pendingCustomers: customersWithReading,
+      });
+    }
+
     const billsWithPrevious = await Promise.all(
       (cycle.bills || []).map(async (bill) => {
         const previousBill = await prisma.bill.findFirst({

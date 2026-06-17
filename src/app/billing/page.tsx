@@ -42,6 +42,7 @@ export default function BillingPage() {
   const [bills, setBills] = useState<Bill[]>([]);
   const [loadingCycles, setLoadingCycles] = useState(true);
   const [loadingBills, setLoadingBills] = useState(false);
+  const [isPendingMode, setIsPendingMode] = useState(false);
 
   // Editing state
   const [readings, setReadings] = useState<Record<string, {
@@ -83,20 +84,57 @@ export default function BillingPage() {
       const res = await fetch(`/api/billing/${cycle.id}`);
       if (!res.ok) throw new Error("فشل جلب فواتير الدورة");
       const data = await res.json();
-      setBills(data.bills || []);
 
-      // Initialize readings state with calculated values
-      const initialReadings: typeof readings = {};
-      (data.bills || []).forEach((b: Bill) => {
-        initialReadings[b.id] = {
-          currentReading: Number(b.currentReading),
-          meterPhotoUrl: b.meterPhotoUrl,
-          notes: b.notes,
-          consumption: Number(b.consumption),
-          totalAmount: Number(b.totalAmount),
-        };
-      });
-      setReadings(initialReadings);
+      // Pending mode: cycle is DRAFT with no bills yet
+      if (data.pendingCustomers && data.pendingCustomers.length > 0) {
+        setIsPendingMode(true);
+        const virtualBills = data.pendingCustomers.map((c: any) => ({
+          id: `pending_${c.customerId}`,
+          billNumber: c.billNumber,
+          previousReading: String(c.previousReading),
+          currentReading: String(c.previousReading),
+          consumption: "0",
+          workUnits: c.workUnits,
+          workUnitsTotal: "0",
+          tier1Units: "0",
+          tier1Cost: "0",
+          tier2Units: "0",
+          tier2Cost: "0",
+          totalAmount: "0",
+          meterPhotoUrl: null,
+          notes: null,
+          customer: c.customer,
+          _customerId: c.customerId,
+        }));
+        setBills(virtualBills);
+
+        const initialReadings: typeof readings = {};
+        virtualBills.forEach((b: any) => {
+          initialReadings[b.id] = {
+            currentReading: Number(b.previousReading),
+            meterPhotoUrl: null,
+            notes: null,
+            consumption: 0,
+            totalAmount: 0,
+          };
+        });
+        setReadings(initialReadings);
+      } else {
+        setIsPendingMode(false);
+        setBills(data.bills || []);
+
+        const initialReadings: typeof readings = {};
+        (data.bills || []).forEach((b: Bill) => {
+          initialReadings[b.id] = {
+            currentReading: Number(b.currentReading),
+            meterPhotoUrl: b.meterPhotoUrl,
+            notes: b.notes,
+            consumption: Number(b.consumption),
+            totalAmount: Number(b.totalAmount),
+          };
+        });
+        setReadings(initialReadings);
+      }
     } catch (err: any) {
       alert(err.message || "حدث خطأ");
     } finally {
@@ -164,12 +202,24 @@ export default function BillingPage() {
     if (!activeCycle) return;
     try {
       setSavingReadings(true);
-      const entries = Object.entries(readings).map(([billId, data]) => ({
-        billId,
-        currentReading: data.currentReading,
-        meterPhotoUrl: data.meterPhotoUrl,
-        notes: data.notes,
-      }));
+      const entries = Object.entries(readings).map(([id, data]) => {
+        const bill = bills.find(b => b.id === id);
+        if (!bill) return null;
+
+        const entry: any = {
+          currentReading: data.currentReading,
+          meterPhotoUrl: data.meterPhotoUrl,
+          notes: data.notes,
+        };
+
+        if (isPendingMode) {
+          entry.customerId = (bill as any)._customerId;
+        } else {
+          entry.billId = id;
+        }
+
+        return entry;
+      }).filter(Boolean);
 
       const res = await fetch(`/api/billing/${activeCycle.id}/entries`, {
         method: "POST",

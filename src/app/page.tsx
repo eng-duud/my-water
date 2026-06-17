@@ -332,7 +332,7 @@ export default function Dashboard() {
               </div>
 
               <div className="bg-blue-50 text-blue-700 text-xs p-3 rounded-lg leading-relaxed">
-                ℹ️ سيؤدي ذلك إلى إنشاء دورة الفوترة وتجهيز مسودات الفواتير لجميع المشتركين النشطين استناداً إلى آخر قراءة عداد مسجلة لهم.
+                ℹ️ سيتم إنشاء دورة فوترة فارغة. ستتمكن بعد ذلك من إدخال قراءات العدادات يدوياً لكل مشترك في صفحة "قراءة العدادات والفوترة".
               </div>
 
               <div className="flex justify-end space-x-2 space-x-reverse pt-4">

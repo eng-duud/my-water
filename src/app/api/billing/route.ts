@@ -3,7 +3,6 @@ import { z } from 'zod';
 import prisma from '@/lib/prisma';
 import { TENANT_ID } from '@/lib/constants';
 import { getOrCreateTenant } from '@/lib/tenant';
-import { calculateBill } from '@/lib/billing';
 
 const createCycleSchema = z.object({
   year: z.number().int().min(2000).max(2100),
@@ -65,91 +64,14 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Create billing cycle and pre-generate calculated bills for all active customers
-    const cycle = await prisma.$transaction(async (tx: any) => {
-      const tenantSettings = await tx.tenantSettings.findUnique({
-        where: { tenantId: TENANT_ID },
-      });
-      const workUnitPrice = tenantSettings?.workUnitPrice || 2000;
-      const tier1Limit = tenantSettings?.tier1Limit || 4;
-      const tier1Price = tenantSettings?.tier1PricePerUnit || 700;
-      const tier2Price = tenantSettings?.tier2PricePerUnit || 1000;
-
-      // Create cycle
-      const newCycle = await tx.billingCycle.create({
-        data: {
-          tenantId: TENANT_ID,
-          year,
-          month,
-          status: 'DRAFT',
-        },
-      });
-
-      // Get active customers
-      const customers = await tx.customer.findMany({
-        where: {
-          tenantId: TENANT_ID,
-          isActive: true,
-        },
-      });
-
-      // For each customer, generate a calculated bill
-      for (const customer of customers) {
-        // Find latest meter reading from previous cycles
-        const lastBill = await tx.bill.findFirst({
-          where: {
-            tenantId: TENANT_ID,
-            customerId: customer.id,
-          },
-          orderBy: {
-            createdAt: 'desc',
-          },
-        });
-
-        const prevReading = lastBill ? Number(lastBill.currentReading) : 0;
-        const workUnits = customer.workUnits;
-
-        // Invoice number: INV-{year}{month_padded}-{customerAccountNumber}
-        const monthPadded = String(month).padStart(2, '0');
-        const billNumber = `INV-${year}${monthPadded}-${customer.accountNumber}`;
-
-        // Calculate consumption: current = prevReading + workUnits (default consumption = workUnits)
-        const currentReading = prevReading + workUnits;
-
-        // Run calculation engine
-        const calc = calculateBill({
-          workUnits,
-          previousReading: prevReading,
-          currentReading,
-          workUnitPrice,
-          tier1Limit,
-          tier1Price,
-          tier2Price,
-        });
-
-        await tx.bill.create({
-          data: {
-            tenantId: TENANT_ID,
-            billNumber,
-            customerId: customer.id,
-            billingCycleId: newCycle.id,
-            previousReading: prevReading,
-            currentReading,
-            consumption: calc.consumption,
-            workUnits,
-            workUnitsTotal: calc.workUnitsTotal,
-            tier1Units: calc.tier1Units,
-            tier1Cost: calc.tier1Cost,
-            tier2Units: calc.tier2Units,
-            tier2Cost: calc.tier2Cost,
-            totalAmount: calc.totalAmount,
-            paidAmount: 0,
-            status: 'PENDING',
-          },
-        });
-      }
-
-      return newCycle;
+    // Create billing cycle only (no bills pre-generated)
+    const cycle = await prisma.billingCycle.create({
+      data: {
+        tenantId: TENANT_ID,
+        year,
+        month,
+        status: 'DRAFT',
+      },
     });
 
     return NextResponse.json(cycle, { status: 201 });
