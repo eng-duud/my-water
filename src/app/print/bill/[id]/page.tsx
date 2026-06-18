@@ -118,25 +118,35 @@ export default function SingleBillPrint() {
   return (
     <div className="print-container bg-white p-4 max-w-[21cm] mx-auto text-black font-sans dir-rtl space-y-3">
       {/* HEADER */}
-      <div className="flex flex-col items-center border-b-2 border-black pb-2 space-y-2">
-        <img
-          src="/logo.png"
-          alt="شعار المشروع"
-          className="w-20 h-20 object-contain"
-          onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }}
-        />
-        <div className="flex justify-between items-center w-full">
+      <div className="flex flex-col items-center border-b-2 border-black pb-3 space-y-4">
+        {/* Prominent Logo */}
+        <div className="relative">
+          <div className="absolute inset-0 bg-amber-500/10 blur-xl rounded-full -z-10"></div>
+          <img
+            src="/logo.png"
+            alt="شعار المشروع"
+            className="w-24 h-24 object-contain drop-shadow-[0_5px_15px_rgba(0,0,0,0.2)] border-2 border-amber-100 rounded-full p-1 bg-white"
+            onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }}
+          />
+        </div>
+
+        <div className="flex justify-between items-end w-full">
+          {/* Right Section: Entity Info */}
           <div className="text-right flex-1">
-            <h1 className="text-base font-extrabold">الجمهورية اليمنية - محافظة تعز</h1>
-            <h2 className="text-sm font-bold">مشروع مياه غيل الضياء قدس المواسط</h2>
-            <p className="text-[10px] text-gray-600 font-semibold">فاتورة استهلاك مياه الشرب</p>
+            <h1 className="text-base font-extrabold text-gray-900">الجمهورية اليمنية - محافظة تعز</h1>
+            <h2 className="text-sm font-bold text-gray-800">مشروع مياه غيل الضياء قدس المواسط</h2>
+            <p className="text-[10px] text-gray-600 font-bold mt-1">فاتورة استهلاك مياه الشرب</p>
           </div>
-          <div className="text-center bg-gradient-to-b from-amber-50 to-amber-100 border-2 border-amber-800 px-5 py-1.5 rounded-md shadow-sm mx-4">
-            <h2 className="text-sm font-extrabold text-amber-900 tracking-wider">فاتورة المياه</h2>
-          </div>
-          <div className="text-left text-[10px] space-y-0.5 flex-1">
-            <p className="font-bold text-xs border-b border-black pb-0.5">رقم: {bill.billNumber}</p>
-            <p className="text-gray-600">{bill.customer.address || "—"}</p>
+
+          {/* Left Section: Bill Number and Type */}
+          <div className="text-left flex-1 flex flex-col items-end">
+            <div className="border-2 border-black px-3 py-1 rounded bg-gray-50 mb-1">
+              <p className="font-black text-sm">رقم الفاتورة: {bill.billNumber}</p>
+            </div>
+            <div className="bg-amber-100 border-2 border-amber-800 px-4 py-1 rounded shadow-sm">
+              <h2 className="text-xs font-black text-amber-900">فاتورة المياه</h2>
+            </div>
+            <p className="text-[10px] text-gray-700 font-bold mt-1">{bill.customer.address || "—"}</p>
           </div>
         </div>
       </div>
