@@ -21,7 +21,7 @@ interface Bill {
   previousReading: string;
   currentReading: string;
   consumption: string;
-  workUnits: number;
+  workUnits: number | string;
   workUnitsTotal: string;
   tier1Units: string;
   tier1Cost: string;
@@ -128,7 +128,7 @@ export default function BillingPage() {
           previousReading: String(c.previousReading),
           currentReading: String(c.previousReading),
           consumption: "0",
-          workUnits: c.workUnits,
+          workUnits: Number(c.workUnits),
           workUnitsTotal: "0",
           tier1Units: "0",
           tier1Cost: "0",
@@ -154,7 +154,7 @@ export default function BillingPage() {
       mergedBills.forEach((b: any) => {
         const isPending = b.id.startsWith('pending_');
         const storedConsumption = Number(b.consumption || 0);
-        const work = b.workUnits || 0;
+        const work = Number(b.workUnits) || 0;
         const prevReading = Number(b.previousReading);
         const currReading = isPending ? prevReading : Number(b.currentReading);
         const actualConsumption = Math.max(currReading - prevReading, 0);
@@ -245,10 +245,10 @@ export default function BillingPage() {
     if (unitType === 'regular') {
       recalc(billId, { workUnits: 0 });
     } else if (unitType === 'work') {
-      const defaultWork = bill.workUnits || 1;
+      const defaultWork = Number(bill.workUnits) || 1;
       recalc(billId, { workUnits: defaultWork });
     } else {
-      const defaultWork = bill.workUnits || 1;
+      const defaultWork = Number(bill.workUnits) || 1;
       recalc(billId, { workUnits: defaultWork });
     }
   };

@@ -10,7 +10,7 @@ interface Customer {
   phone: string | null;
   village: string | null;
   address: string | null;
-  workUnits: number;
+  workUnits: number | string;
   isActive: boolean;
   meterNumber: string | null;
   photoUrl: string | null;
@@ -75,7 +75,7 @@ export default function CustomersPage() {
     setPhone(c.phone || "");
     setVillage(c.village || "");
     setAddress(c.address || "");
-    setWorkUnits(String(c.workUnits));
+    setWorkUnits(String(Number(c.workUnits)));
     setIsActive(c.isActive);
     setMeterNumber(c.meterNumber || "");
     setPhotoUrl(c.photoUrl || "");
