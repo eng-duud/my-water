@@ -15,6 +15,7 @@ interface UnpaidBill {
   totalAmount: number;
   paidAmount: number;
   unpaidAmount: number;
+  createdAt: string;
   billingCycle: {
     year: number;
     month: number;
@@ -57,7 +58,7 @@ export default function PaymentsPage() {
 
   const [selectedCustomerId, setSelectedCustomerId] = useState("");
   const [unpaidBills, setUnpaidBills] = useState<UnpaidBill[]>([]);
-  const [selectedBillId, setSelectedBillId] = useState("");
+  const [selectedBillIds, setSelectedBillIds] = useState<string[]>([]);
   const [amount, setAmount] = useState("");
   const [paymentMethod, setPaymentMethod] = useState("CASH");
   const [receiptNumber, setReceiptNumber] = useState("");
@@ -96,7 +97,7 @@ export default function PaymentsPage() {
   useEffect(() => {
     if (!selectedCustomerId) {
       setUnpaidBills([]);
-      setSelectedBillId("");
+      setSelectedBillIds([]);
       return;
     }
     const fetchBills = async () => {
@@ -112,11 +113,12 @@ export default function PaymentsPage() {
             totalAmount: Number(b.totalAmount),
             paidAmount: Number(b.paidAmount),
             unpaidAmount: Number(b.totalAmount) - Number(b.paidAmount),
+            createdAt: b.createdAt,
             billingCycle: b.billingCycle,
           }))
           .sort((a: any, b: any) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
         setUnpaidBills(unpaid);
-        setSelectedBillId("");
+        setSelectedBillIds([]);
       } catch (err) {
         console.error("Error fetching customer bills:", err);
       }
@@ -124,15 +126,26 @@ export default function PaymentsPage() {
     fetchBills();
   }, [selectedCustomerId]);
 
-  const selectedBill = unpaidBills.find(b => b.id === selectedBillId);
+  const totalUnpaidSelected = selectedBillIds.reduce((sum, id) => {
+    const bill = unpaidBills.find(b => b.id === id);
+    return sum + (bill ? bill.unpaidAmount : 0);
+  }, 0);
   const enteredAmount = parseFloat(amount) || 0;
-  const allocateAmount = selectedBill ? Math.min(enteredAmount, selectedBill.unpaidAmount) : 0;
-  const surplusAmount = selectedBill ? Math.max(enteredAmount - selectedBill.unpaidAmount, 0) : enteredAmount;
-  const isOverpayment = selectedBill && enteredAmount > selectedBill.unpaidAmount;
+  const allocateAmount = Math.min(enteredAmount, totalUnpaidSelected);
+  const surplusAmount = Math.max(enteredAmount - totalUnpaidSelected, 0);
+  const isOverpayment = enteredAmount > totalUnpaidSelected;
+
+  const toggleBillSelection = (billId: string) => {
+    setSelectedBillIds(prev =>
+      prev.includes(billId)
+        ? prev.filter(id => id !== billId)
+        : [...prev, billId]
+    );
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!selectedBillId || !amount) return;
+    if (selectedBillIds.length === 0 || !amount) return;
 
     try {
       setSubmitting(true);
@@ -140,7 +153,7 @@ export default function PaymentsPage() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          billId: selectedBillId,
+          billIds: selectedBillIds,
           amount: parseFloat(amount),
           paymentMethod,
           receiptNumber: receiptNumber || null,
@@ -151,13 +164,13 @@ export default function PaymentsPage() {
       const resData = await res.json();
       if (!res.ok) throw new Error(resData.error || "فشل تسجيل الدفعة");
 
-      alert("تم تسجيل الدفعة وتخصيصها للفاتورة بنجاح!");
+      alert("تم تسجيل الدفعة وتوزيعها على الفواتير المحددة بنجاح!");
 
       setSelectedCustomerId("");
       setAmount("");
       setReceiptNumber("");
       setNotes("");
-      setSelectedBillId("");
+      setSelectedBillIds([]);
       fetchData();
     } catch (err: any) {
       alert(err.message || "حدث خطأ");
@@ -197,7 +210,7 @@ export default function PaymentsPage() {
     <div className="space-y-6">
       <div>
         <h2 className="text-xl font-bold text-slate-800">سداد الفواتير والتحصيل المالي</h2>
-        <p className="text-xs text-slate-500 mt-0.5 font-medium">تسجيل المبالغ المقبوضة وتخصيصها لدورة فوترة واحدة.</p>
+        <p className="text-xs text-slate-500 mt-0.5 font-medium">تسجيل المبالغ المقبوضة وتوزيعها على فاتورة أو أكثر.</p>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start">
@@ -223,10 +236,10 @@ export default function PaymentsPage() {
               </select>
             </div>
 
-            {/* Unpaid bills list */}
+            {/* Unpaid bills list with checkboxes */}
             {selectedCustomerId && (
               <div>
-                <label className="block text-xs font-semibold text-slate-600 mb-1">اختر الفاتورة المراد سدادها</label>
+                <label className="block text-xs font-semibold text-slate-600 mb-1">اختر الفاتورة/الفواتير المراد سدادها</label>
                 {unpaidBills.length === 0 ? (
                   <p className="text-[11px] text-slate-500 bg-slate-50 p-3 rounded-lg">لا يوجد فواتير مستحقة لهذا المشترك.</p>
                 ) : (
@@ -235,18 +248,16 @@ export default function PaymentsPage() {
                       <label
                         key={b.id}
                         className={`flex items-center space-x-2 space-x-reverse p-3 rounded-lg border text-xs cursor-pointer transition-colors ${
-                          selectedBillId === b.id
+                          selectedBillIds.includes(b.id)
                             ? "border-brand-500 bg-brand-50/50"
                             : "border-slate-100 hover:bg-slate-50"
                         }`}
                       >
                         <input
-                          type="radio"
-                          name="bill"
-                          value={b.id}
-                          checked={selectedBillId === b.id}
-                          onChange={() => setSelectedBillId(b.id)}
-                          className="accent-brand-600"
+                          type="checkbox"
+                          checked={selectedBillIds.includes(b.id)}
+                          onChange={() => toggleBillSelection(b.id)}
+                          className="accent-brand-600 size-4"
                         />
                         <div className="flex-1">
                           <span className="font-bold text-slate-800 block">{b.billNumber}</span>
@@ -257,6 +268,11 @@ export default function PaymentsPage() {
                         </div>
                       </label>
                     ))}
+                    {selectedBillIds.length > 0 && (
+                      <div className="text-[11px] bg-brand-50 text-brand-800 p-2 rounded-lg font-semibold text-center">
+                        إجمالي المحدد: {totalUnpaidSelected.toLocaleString()} ريال ({selectedBillIds.length} فاتورة)
+                      </div>
+                    )}
                   </div>
                 )}
               </div>
@@ -311,20 +327,20 @@ export default function PaymentsPage() {
             </div>
 
             {/* Preview */}
-            {selectedBill && enteredAmount > 0 && (
+            {selectedBillIds.length > 0 && enteredAmount > 0 && (
               <div className="bg-slate-50 p-4 rounded-xl space-y-2 border border-slate-200">
-                <h4 className="text-xs font-bold text-slate-700">🔍 معاينة التخصيص:</h4>
+                <h4 className="text-xs font-bold text-slate-700">🔍 معاينة التوزيع:</h4>
                 <div className="text-[11px] space-y-1">
-                  <div className="flex justify-between text-slate-600">
-                    <span>الفاتورة:</span>
-                    <span className="font-bold">{selectedBill.billNumber}</span>
+                  <div className="text-slate-600">
+                    <span className="font-semibold">الفواتير المحددة: </span>
+                    <span className="font-bold">{selectedBillIds.length}</span>
                   </div>
                   <div className="flex justify-between text-slate-600">
-                    <span>المبلغ المتبقي:</span>
-                    <span className="font-bold text-amber-600">{selectedBill.unpaidAmount.toLocaleString()} ريال</span>
+                    <span>إجمالي المطلوب:</span>
+                    <span className="font-bold text-amber-600">{totalUnpaidSelected.toLocaleString()} ريال</span>
                   </div>
                   <div className="flex justify-between text-slate-600 border-t border-slate-200 pt-1">
-                    <span>سيتم تخصيص:</span>
+                    <span>سيتم توزيع:</span>
                     <span className="font-bold text-emerald-600">{allocateAmount.toLocaleString()} ريال</span>
                   </div>
                   {isOverpayment && (
@@ -338,10 +354,10 @@ export default function PaymentsPage() {
 
             <button
               type="submit"
-              disabled={submitting || !selectedBillId || !amount}
+              disabled={submitting || selectedBillIds.length === 0 || !amount}
               className="w-full bg-brand-600 hover:bg-brand-700 text-white font-bold text-sm py-2.5 rounded-xl shadow-sm transition-colors disabled:opacity-50"
             >
-              {submitting ? "جاري التسجيل والتخصيص..." : "سداد وتسجيل المقبوضات"}
+              {submitting ? "جاري التسجيل والتوزيع..." : "سداد وتسجيل المقبوضات"}
             </button>
           </form>
         </div>
@@ -355,7 +371,7 @@ export default function PaymentsPage() {
               <thead>
                 <tr className="bg-slate-50 border-b border-slate-200 text-xs font-semibold text-slate-600">
                   <th className="p-3">المشترك</th>
-                  <th className="p-3">الفاتورة</th>
+                  <th className="p-3">الفواتير</th>
                   <th className="p-3">دورة الفوترة</th>
                   <th className="p-3">المبلغ</th>
                   <th className="p-3">الموزع</th>
@@ -376,14 +392,13 @@ export default function PaymentsPage() {
                     </tr>
                   ) : (
                   payments.map((p) => {
-                    const firstAlloc = p.allocations?.[0];
+                    const billLabels = p.allocations.map(a => a.bill.billNumber).join(", ");
+                    const cycleLabels = p.allocations.map(a => `${a.bill.billingCycle.year}/${String(a.bill.billingCycle.month).padStart(2, '0')}`).join(", ");
                     return (
                       <tr key={p.id} className="hover:bg-slate-50/50">
                         <td className="p-3 font-semibold text-slate-800">{p.customer.name}</td>
-                        <td className="p-3 font-mono text-slate-600">{firstAlloc?.bill.billNumber || "—"}</td>
-                        <td className="p-3 text-slate-600">
-                          {firstAlloc ? `${firstAlloc.bill.billingCycle.year}/${String(firstAlloc.bill.billingCycle.month).padStart(2, '0')}` : "—"}
-                        </td>
+                        <td className="p-3 font-mono text-slate-600 text-[10px]">{billLabels || "—"}</td>
+                        <td className="p-3 text-slate-600 text-[10px]">{cycleLabels || "—"}</td>
                         <td className="p-3 font-bold text-slate-700">{Number(p.amount).toLocaleString()} ريال</td>
                         <td className="p-3 text-emerald-600 font-semibold">{Number(p.allocatedAmount).toLocaleString()} ريال</td>
                         <td className="p-3 text-amber-600 font-semibold">{Number(p.surplusAmount).toLocaleString()} ريال</td>

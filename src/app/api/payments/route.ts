@@ -5,7 +5,7 @@ import { allocatePaymentToSingleBill } from '@/lib/payment-distribution';
 import { TENANT_ID } from '@/lib/constants';
 
 const paymentSchema = z.object({
-  billId: z.string().min(1, 'معرف الفاتورة مطلوب'),
+  billIds: z.array(z.string().min(1)).min(1, 'يجب اختيار فاتورة واحدة على الأقل'),
   amount: z.number().positive('مبلغ السداد يجب أن يكون أكبر من الصفر'),
   paymentMethod: z.string().optional().nullable(),
   receiptNumber: z.string().optional().nullable(),
@@ -40,6 +40,10 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
+    // Support both billIds (array) and billId (single, backward compatibility)
+    if (body.billId && !body.billIds) {
+      body.billIds = [body.billId];
+    }
     const parsed = paymentSchema.safeParse(body);
 
     if (!parsed.success) {
@@ -51,7 +55,7 @@ export async function POST(request: NextRequest) {
 
     const result = await allocatePaymentToSingleBill({
       tenantId: TENANT_ID,
-      billId: parsed.data.billId,
+      billIds: parsed.data.billIds,
       amount: parsed.data.amount,
       paymentMethod: parsed.data.paymentMethod,
       receiptNumber: parsed.data.receiptNumber,

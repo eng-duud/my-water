@@ -24,8 +24,6 @@ interface BillData {
   notes: string | null;
   createdAt: string;
   arrears?: number;
-  previousBillAmount?: number;
-  previousBillPaid?: number;
   customer: {
     accountNumber: string;
     name: string;
@@ -112,6 +110,7 @@ export default function BatchBillsPrint() {
         const actualConsumption = Math.max(currentReading - previousReading, 0);
         const storedConsumption = Number(bill.consumption);
         const isEstimated = storedConsumption !== actualConsumption && storedConsumption > 0;
+        const usedConsumption = isEstimated ? storedConsumption : actualConsumption;
 
         const tier1Cost = Number(bill.tier1Cost);
         const tier2Cost = Number(bill.tier2Cost);
@@ -133,153 +132,137 @@ export default function BatchBillsPrint() {
         return (
           <div
             key={bill.id}
-            className="bill-page-break bg-white p-6 max-w-[21cm] mx-auto text-black font-sans dir-rtl print:border-none print:shadow-none print:p-4"
+            className="bill-page-break bg-white p-4 max-w-[21cm] mx-auto text-black font-sans dir-rtl space-y-3 print:border-none print:shadow-none"
           >
-            <div className="border-b-2 border-black pb-4 mb-4">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center space-x-4 space-x-reverse">
-                  <img
-                    src="/logo.svg"
-                    alt="شعار المشروع"
-                    className="w-16 h-16 object-contain"
-                    onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }}
-                  />
-                  <div className="text-right">
-                    <h1 className="text-lg font-extrabold tracking-wide">الجمهورية اليمنية - محافظة تعز</h1>
-                    <h2 className="text-base font-bold mt-0.5">مشروع مياه غيل الضياء</h2>
-                    <p className="text-sm font-semibold text-gray-600 mt-0.5">فاتورة استهلاك مياه</p>
-                  </div>
+            {/* HEADER */}
+            <div className="flex justify-between items-center border-b-2 border-black pb-2">
+              <div className="flex items-center space-x-3 space-x-reverse">
+                <img
+                  src="/logo.png"
+                  alt="شعار المشروع"
+                  className="w-14 h-14 object-contain"
+                  onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }}
+                />
+                <div className="text-right">
+                  <h1 className="text-base font-extrabold">الجمهورية اليمنية - محافظة تعز</h1>
+                  <h2 className="text-sm font-bold">مشروع مياه غيل الضياء قدس المواسط</h2>
+                  <p className="text-[10px] text-gray-600 font-semibold">فاتورة استهلاك مياه الشرب</p>
                 </div>
-                <div className="text-left border border-black bg-gray-50 px-5 py-2 rounded">
-                  <p className="text-xs font-bold">رقم: {bill.billNumber}</p>
-                </div>
+              </div>
+              <div className="text-center bg-gradient-to-b from-amber-50 to-amber-100 border-2 border-amber-800 px-5 py-1.5 rounded-md shadow-sm">
+                <h2 className="text-sm font-extrabold text-amber-900 tracking-wider">فاتورة المياه</h2>
+              </div>
+              <div className="text-left text-[10px] space-y-0.5">
+                <p className="font-bold text-xs border-b border-black pb-0.5">رقم: {bill.billNumber}</p>
+                <p className="text-gray-600">{bill.customer.address || "—"}</p>
               </div>
             </div>
 
-            <div className="grid grid-cols-2 md:grid-cols-3 gap-2 text-sm border border-black p-3 mb-4 bg-gray-50/30">
-              <div className="flex justify-between border-l border-gray-300 pl-2">
-                <span className="text-gray-600">رقم المشترك:</span>
-                <span className="font-bold">{bill.customer.accountNumber}</span>
-              </div>
-              <div className="flex justify-between border-l border-gray-300 pl-2">
-                <span className="text-gray-600">اسم المشترك:</span>
-                <span className="font-bold">{bill.customer.name}</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-gray-600">رقم العداد:</span>
-                <span className="font-bold">{bill.customer.meterNumber || "—"}</span>
-              </div>
-              <div className="flex justify-between border-l border-gray-300 pl-2">
-                <span className="text-gray-600">الشهر:</span>
+            {/* CUSTOMER INFO BAR */}
+            <div className="bg-gradient-to-r from-gray-50 to-white border border-black rounded-sm p-2">
+              <p className="text-xs">
+                <span className="text-gray-600">المطلوب من الأخ / </span>
+                <span className="font-bold border-b border-dotted border-black text-sm">{bill.customer.name}</span>
+                <span className="text-gray-600 mx-2">|</span>
+                <span className="text-gray-600">رقم المشترك: </span>
+                <span className="font-bold font-mono">{bill.customer.accountNumber}</span>
+                <span className="text-gray-600 mx-2">|</span>
+                <span className="text-gray-600">رقم العداد: </span>
+                <span className="font-bold font-mono">{bill.customer.meterNumber || "—"}</span>
+                <span className="text-gray-600 mx-2">|</span>
+                <span className="text-gray-600">شهر: </span>
                 <span className="font-bold">{ARABIC_MONTHS[bill.billingCycle.month]} {bill.billingCycle.year}</span>
-              </div>
-              <div className="flex justify-between border-l border-gray-300 pl-2">
-                <span className="text-gray-600">تاريخ الفاتورة:</span>
-                <span className="font-bold">{new Date(bill.createdAt).toLocaleDateString("ar-YE")}</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-gray-600">المنطقة:</span>
-                <span className="font-bold">{bill.customer.address || "—"}</span>
-              </div>
+                <span className="text-gray-600 mx-2">|</span>
+                <span className="text-gray-600">التاريخ: </span>
+                <span className="font-bold font-mono">{new Date(bill.createdAt).toLocaleDateString("ar-YE")}</span>
+              </p>
             </div>
 
-            <div className="border border-black mb-4">
-              <table className="w-full border-collapse text-sm">
+            {/* MAIN TABLE - COLUMNS SIDE BY SIDE */}
+            <div className="overflow-x-auto">
+              <table className="w-full border-collapse border-2 border-black text-center text-[11px]">
                 <thead>
-                  <tr className="bg-gray-100 border-b border-black">
-                    <th className="border-l border-black p-2 text-center font-bold text-xs">البيان</th>
-                    <th className="p-2 text-center font-bold text-xs">القيمة (ريال)</th>
+                  <tr className="bg-gradient-to-r from-gray-100 to-gray-50">
+                    <th colSpan={2} className="border-l-2 border-black p-1.5 text-xs font-bold text-gray-700">قراءة العداد</th>
+                    <th className="border-l-2 border-black p-1.5 text-xs font-bold text-blue-800">الاستهلاك الفعلي</th>
+                    <th className="border-l-2 border-black p-1.5 text-xs font-bold text-amber-700">التقديري</th>
+                    <th className="border-l-2 border-black p-1.5 text-xs font-bold text-purple-800">وحدات العمل</th>
+                    <th className="border-l-2 border-black p-1.5 text-xs font-bold text-emerald-800">قيمة الاستهلاك</th>
+                    <th className="border-l-2 border-black p-1.5 text-xs font-bold text-sky-800">رسوم الخدمات</th>
+                    <th className="border-l-2 border-black p-1.5 text-xs font-bold text-rose-700">الغرامات</th>
+                    <th className="border-l-2 border-black p-1.5 text-xs font-bold text-emerald-600">الإعفاءات</th>
+                    <th className="border-l-2 border-black p-1.5 text-xs font-bold text-gray-800">إجمالي الشهر</th>
+                    <th className="border-l-2 border-black p-1.5 text-xs font-bold text-rose-800">المتأخرات</th>
+                    <th className="p-1.5 text-xs font-extrabold text-red-900 bg-red-50">الإجمالي الكلي</th>
+                  </tr>
+                  <tr className="bg-gray-50">
+                    <th className="border-l-2 border-black p-1 border-t border-black text-[10px] text-gray-600">الحالية</th>
+                    <th className="border-l-2 border-black p-1 border-t border-black text-[10px] text-gray-600">السابقة</th>
+                    <th className="border-l-2 border-black p-1 border-t border-black text-[10px] text-gray-600">م³</th>
+                    <th className="border-l-2 border-black p-1 border-t border-black text-[10px] text-gray-600">م³</th>
+                    <th className="border-l-2 border-black p-1 border-t border-black text-[10px] text-gray-600">وحدة</th>
+                    <th className="border-l-2 border-black p-1 border-t border-black text-[10px] text-gray-600">ريال</th>
+                    <th className="border-l-2 border-black p-1 border-t border-black text-[10px] text-gray-600">ريال</th>
+                    <th className="border-l-2 border-black p-1 border-t border-black text-[10px] text-gray-600">ريال</th>
+                    <th className="border-l-2 border-black p-1 border-t border-black text-[10px] text-gray-600">ريال</th>
+                    <th className="border-l-2 border-black p-1 border-t border-black text-[10px] text-gray-600">ريال</th>
+                    <th className="border-l-2 border-black p-1 border-t border-black text-[10px] text-gray-600">ريال</th>
+                    <th className="p-1 border-t border-black text-[10px] text-red-800">ريال</th>
                   </tr>
                 </thead>
                 <tbody>
-                  <tr className="border-b border-gray-200">
-                    <td className="border-l border-gray-200 p-2 pr-4 font-semibold">المتأخرات السابقة</td>
-                    <td className="p-2 text-center font-mono font-bold text-rose-700">{formatNum(arrears)}</td>
-                  </tr>
-                  <tr className="border-b border-gray-200">
-                    <td className="border-l border-gray-200 p-2 pr-4">القراءة السابقة</td>
-                    <td className="p-2 text-center font-mono">{readingFormat(previousReading)}</td>
-                  </tr>
-                  <tr className="border-b border-gray-200">
-                    <td className="border-l border-gray-200 p-2 pr-4">القراءة الحالية</td>
-                    <td className="p-2 text-center font-mono">{readingFormat(currentReading)}</td>
-                  </tr>
-                  <tr className="border-b border-gray-200">
-                    <td className="border-l border-gray-200 p-2 pr-4">الاستهلاك الفعلي</td>
-                    <td className="p-2 text-center font-mono">{readingFormat(actualConsumption)}</td>
-                  </tr>
-                  {isEstimated && (
-                    <tr className="border-b border-gray-200">
-                      <td className="border-l border-gray-200 p-2 pr-4 text-amber-700">الاستهلاك التقديري</td>
-                      <td className="p-2 text-center font-mono text-amber-700">{readingFormat(storedConsumption)}</td>
-                    </tr>
-                  )}
-                  <tr className="border-b border-gray-200">
-                    <td className="border-l border-gray-200 p-2 pr-4">قيمة الاستهلاك (الحد الأدنى {formatNum(MINIMUM_FEE)} ريال)</td>
-                    <td className="p-2 text-center font-mono font-bold">{formatNum(consumptionCost)}</td>
-                  </tr>
-                  {(serviceFee > 0) && (
-                    <tr className="border-b border-gray-200">
-                      <td className="border-l border-gray-200 p-2 pr-4">رسوم الخدمات</td>
-                      <td className="p-2 text-center font-mono">{formatNum(serviceFee)}</td>
-                    </tr>
-                  )}
-                  {(fine > 0) && (
-                    <tr className="border-b border-gray-200">
-                      <td className="border-l border-gray-200 p-2 pr-4 text-rose-600">الغرامات</td>
-                      <td className="p-2 text-center font-mono text-rose-600">{formatNum(fine)}</td>
-                    </tr>
-                  )}
-                  {(exemption > 0) && (
-                    <tr className="border-b border-gray-200">
-                      <td className="border-l border-gray-200 p-2 pr-4 text-emerald-600">الإعفاءات</td>
-                      <td className="p-2 text-center font-mono text-emerald-600">({formatNum(exemption)})</td>
-                    </tr>
-                  )}
-                  {(bill.workUnits > 0) && (
-                    <tr className="border-b border-gray-200">
-                      <td className="border-l border-gray-200 p-2 pr-4">وحدات العمل ({bill.workUnits} وحدة)</td>
-                      <td className="p-2 text-center font-mono">{formatNum(Number(bill.workUnitsTotal))}</td>
-                    </tr>
-                  )}
-                  <tr className="border-b border-black bg-gray-50 font-bold">
-                    <td className="border-l border-black p-2 pr-4 text-base">إجمالي الشهر</td>
-                    <td className="p-2 text-center font-mono text-base">{formatNum(monthTotal)}</td>
-                  </tr>
-                  <tr className="bg-gray-100 font-extrabold">
-                    <td className="border-l border-black p-2 pr-4 text-base">إجمالي الفاتورة (شامل المتأخرات)</td>
-                    <td className="p-2 text-center font-mono text-lg text-rose-700">{formatNum(grandTotal)}</td>
+                  <tr className="bg-white hover:bg-gray-50/50">
+                    <td className="border-l-2 border-black p-2 font-mono font-bold text-slate-800">{readingFormat(currentReading)}</td>
+                    <td className="border-l-2 border-black p-2 font-mono font-bold text-slate-800">{readingFormat(previousReading)}</td>
+                    <td className="border-l-2 border-black p-2 font-mono font-bold text-blue-700">{readingFormat(actualConsumption)}</td>
+                    <td className={`border-l-2 border-black p-2 font-mono font-bold ${isEstimated ? 'text-amber-700' : 'text-gray-300'}`}>{isEstimated ? readingFormat(storedConsumption) : '—'}</td>
+                    <td className="border-l-2 border-black p-2 font-mono font-bold text-purple-700">{bill.workUnits > 0 ? bill.workUnits : '—'}</td>
+                    <td className="border-l-2 border-black p-2 font-mono font-bold text-emerald-700">{formatNum(consumptionCost)}</td>
+                    <td className="border-l-2 border-black p-2 font-mono font-bold text-sky-700">{serviceFee > 0 ? formatNum(serviceFee) : '—'}</td>
+                    <td className="border-l-2 border-black p-2 font-mono font-bold text-rose-600">{fine > 0 ? formatNum(fine) : '—'}</td>
+                    <td className="border-l-2 border-black p-2 font-mono font-bold text-emerald-600">{exemption > 0 ? formatNum(exemption) : '—'}</td>
+                    <td className="border-l-2 border-black p-2 font-mono font-bold text-gray-800">{formatNum(monthTotal)}</td>
+                    <td className="border-l-2 border-black p-2 font-mono font-extrabold text-rose-700">{formatNum(arrears)}</td>
+                    <td className="p-2 font-mono font-extrabold text-lg text-red-900 bg-red-50">{formatNum(grandTotal)}</td>
                   </tr>
                 </tbody>
               </table>
             </div>
 
-            <div className="text-right text-sm font-bold border border-black p-2 mb-4 bg-gray-50/30">
-              <span>المبلغ المستحق: </span>
-              <span className="border-b border-dotted border-black px-2 text-rose-700">{totalWords} ريال يمني</span>
+            {/* AMOUNT IN WORDS */}
+            <div className="text-right text-xs font-bold border-2 border-black p-2 bg-gradient-to-r from-amber-50 to-white rounded-sm">
+              <span>المبلغ المستحق كتابةً: </span>
+              <span className="border-b-2 border-dotted border-black px-2 text-rose-700 font-extrabold text-sm">{totalWords} ريال يمني</span>
               <span> لا غير</span>
             </div>
 
-            <div className="text-xs space-y-1.5 text-slate-800 leading-relaxed border border-black p-3 mb-4 bg-gray-50/30">
-              <p className="font-bold text-center border-b border-gray-300 pb-1.5 mb-1.5">الضوابط والشروط</p>
-              <p>1. التزام السداد: يجب تسديد المبلغ أولاً بأول وعدم التأخير لتجنب انقطاع الخدمة.</p>
-              <p>2. حظر العبث: لا يحق للمشترك العبث بالعداد أو التلاعب به إلا بإشراف مباشر من إدارة المشروع.</p>
-              <p className="font-bold text-rose-700">3. يمنع منعاً باتاً استخدام مياه المشروع لسقي القات. المخالف يدفع غرامة مالية قدرها 30,000 ريال يمني مع سحب العداد.</p>
-              <p>4. الحد الأدنى: يتم دفع 1,000 ريال كحد أدنى للرسوم حتى في حالة عدم الاستهلاك.</p>
+            {/* NOTES & CONDITIONS */}
+            <div className="text-[10px] space-y-1 text-slate-800 leading-relaxed border-2 border-black p-2.5 bg-gradient-to-r from-gray-50 to-white rounded-sm">
+              <p className="font-bold text-center border-b border-gray-300 pb-1 mb-1 text-xs">⚠️ الضوابط والإرشادات</p>
+              <p>• يجب تسديد المبلغ أولاً بأول وعدم التأخير لتجنب انقطاع الخدمة.</p>
+              <p>• لا يحق للمشترك العبث بالعداد أو التلاعب به، ويتم ذلك فقط بإشراف مباشر من إدارة المشروع.</p>
+              <p className="font-bold text-rose-700">• يمنع منعاً باتاً استخدام مياه المشروع لسقي القات. المخالف يدفع غرامة مالية قدرها 30,000 ريال يمني مع سحب العداد.</p>
+              <p>• الحد الأدنى للفاتورة هو 1,000 ريال حتى في حالة عدم الاستهلاك.</p>
             </div>
 
-            <div className="flex justify-between items-center text-sm border-t-2 border-black pt-4 mb-4">
+            {/* FOOTER */}
+            <div className="flex justify-between items-center text-[9px] text-gray-500 pt-2 border-t-2 border-black">
+              <span>تاريخ الطباعة: {new Date().toLocaleDateString("ar-YE")} {new Date().toLocaleTimeString("ar-YE", { hour: "2-digit", minute: "2-digit" })}</span>
+              <span className="font-mono text-[8px] text-gray-400">سعر الشريحة: 0-4 = 700 ريال/م³ | 5+ = 1,000 ريال/م³ | وحدة العمل = 2,000 ريال</span>
+            </div>
+
+            <div className="flex justify-between items-center text-xs pt-2">
               <div className="text-center">
-                <p className="font-bold mb-1">الختم</p>
-                <div className="w-24 h-8 border border-dashed border-gray-400 mx-auto rounded"></div>
+                <p className="font-bold mb-1 text-gray-700">الختم</p>
+                <div className="w-20 h-8 border-2 border-dashed border-gray-400 mx-auto rounded"></div>
               </div>
               <div className="text-center">
-                <p className="font-bold mb-1">توقيع المحصل</p>
-                <div className="w-32 h-8 border border-dashed border-gray-400 mx-auto rounded"></div>
+                <p className="font-bold mb-1 text-gray-700">توقيع المحصل</p>
+                <div className="w-28 h-8 border-2 border-dashed border-gray-400 mx-auto rounded"></div>
               </div>
-              <div className="text-left text-[10px] text-gray-500">
-                <p>تاريخ الطباعة: {new Date().toLocaleDateString("ar-YE")}</p>
-                <p>{new Date().toLocaleTimeString("ar-YE", { hour: "2-digit", minute: "2-digit" })}</p>
+              <div className="text-center">
+                <p className="font-bold mb-1 text-gray-700">توقيع المشترك</p>
+                <div className="w-28 h-8 border-2 border-dashed border-gray-400 mx-auto rounded"></div>
               </div>
             </div>
           </div>
