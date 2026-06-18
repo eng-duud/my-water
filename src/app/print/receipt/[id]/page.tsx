@@ -108,26 +108,26 @@ export default function ReceiptPrint() {
   return (
     <div className="print-container bg-white p-4 max-w-[21cm] mx-auto text-black font-sans dir-rtl space-y-3">
       {/* HEADER */}
-      <div className="flex justify-between items-center border-b-2 border-black pb-2">
-        <div className="flex items-center space-x-3 space-x-reverse">
-          <img
-            src="/logo.png"
-            alt="شعار المشروع"
-            className="w-14 h-14 object-contain"
-            onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }}
-          />
-          <div className="text-right">
+      <div className="flex flex-col items-center border-b-2 border-black pb-2 space-y-2">
+        <img
+          src="/logo.png"
+          alt="شعار المشروع"
+          className="w-20 h-20 object-contain"
+          onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }}
+        />
+        <div className="flex justify-between items-center w-full">
+          <div className="text-right flex-1">
             <h1 className="text-base font-extrabold">الجمهورية اليمنية - محافظة تعز</h1>
             <h2 className="text-sm font-bold">مشروع مياه غيل الضياء قدس المواسط</h2>
             <p className="text-[10px] text-gray-600 font-semibold">سند قبض رسمي</p>
           </div>
-        </div>
-        <div className="text-center bg-gradient-to-b from-emerald-50 to-emerald-100 border-2 border-emerald-800 px-5 py-1.5 rounded-md shadow-sm">
-          <h2 className="text-sm font-extrabold text-emerald-900 tracking-wider">سند قبض</h2>
-        </div>
-        <div className="text-left text-[10px] space-y-0.5">
-          <p className="font-bold text-xs border-b border-black pb-0.5">رقم: {receipt.receiptNumber || receipt.id.slice(0, 8)}</p>
-          <p className="text-gray-600">{receipt.customer.address || "—"}</p>
+          <div className="text-center bg-gradient-to-b from-emerald-50 to-emerald-100 border-2 border-emerald-800 px-5 py-1.5 rounded-md shadow-sm mx-4">
+            <h2 className="text-sm font-extrabold text-emerald-900 tracking-wider">سند قبض</h2>
+          </div>
+          <div className="text-left text-[10px] space-y-0.5 flex-1">
+            <p className="font-bold text-xs border-b border-black pb-0.5">رقم: {receipt.receiptNumber || receipt.id.slice(0, 8)}</p>
+            <p className="text-gray-600">{receipt.customer.address || "—"}</p>
+          </div>
         </div>
       </div>
 
