@@ -108,9 +108,17 @@ export default function BillingPage() {
       if (!res.ok) throw new Error("فشل جلب فواتير الدورة");
       const data = await res.json();
 
-      if (data.pendingCustomers && data.pendingCustomers.length > 0) {
+      // Merge existing bills with pending customers
+      const existingBills = data.bills || [];
+      const pending = data.pendingCustomers || [];
+      const hasPending = pending.length > 0;
+
+      let mergedBills: any[] = [];
+
+      if (hasPending) {
         setIsPendingMode(true);
-        const virtualBills = data.pendingCustomers.map((c: any) => ({
+        // Create virtual bills for pending customers
+        const virtualBills = pending.map((c: any) => ({
           id: `pending_${c.customerId}`,
           billNumber: c.billNumber,
           previousReading: String(c.previousReading),
@@ -128,65 +136,45 @@ export default function BillingPage() {
           customer: c.customer,
           _customerId: c.customerId,
         }));
-        setBills(virtualBills);
-
-        const initR: typeof readings = {};
-        const initU: Record<string, UnitType> = {};
-        virtualBills.forEach((b: any) => {
-          initU[b.id] = 'regular';
-          initR[b.id] = {
-            currentReading: Number(b.previousReading),
-            workUnits: 0,
-            meterPhotoUrl: null,
-            notes: null,
-            consumption: 0,
-            consumptionManual: false,
-            workUnitsTotal: 0,
-            consumptionCost: 0,
-            serviceFee: 0,
-            fine: 0,
-            exemption: 0,
-            totalAmount: 0,
-          };
-        });
-        setReadings(initR);
-        setUnitTypes(initU);
+        mergedBills = [...existingBills, ...virtualBills];
       } else {
         setIsPendingMode(false);
-        const existingBills = data.bills || [];
-        setBills(existingBills);
-
-        const initR: typeof readings = {};
-        const initU: Record<string, UnitType> = {};
-        existingBills.forEach((b: Bill) => {
-          const consumption = Number(b.consumption);
-          const work = b.workUnits;
-          if (work > 0 && consumption > 0) initU[b.id] = 'both';
-          else if (work > 0) initU[b.id] = 'work';
-          else initU[b.id] = 'regular';
-
-          const sf = Number(b.serviceFee) || 0;
-          const fn = Number(b.fine) || 0;
-          const ex = Number(b.exemption) || 0;
-          const prevCalc = calcClient(consumption, work, sf, fn, ex);
-          initR[b.id] = {
-            currentReading: Number(b.currentReading),
-            workUnits: work,
-            meterPhotoUrl: b.meterPhotoUrl,
-            notes: b.notes,
-            consumption: prevCalc.consumption,
-            consumptionManual: false,
-            workUnitsTotal: prevCalc.workUnitsTotal,
-            consumptionCost: prevCalc.consumptionCost,
-            serviceFee: sf,
-            fine: fn,
-            exemption: ex,
-            totalAmount: prevCalc.totalAmount,
-          };
-        });
-        setReadings(initR);
-        setUnitTypes(initU);
+        mergedBills = existingBills;
       }
+
+      setBills(mergedBills);
+
+      const initR: typeof readings = {};
+      const initU: Record<string, UnitType> = {};
+      mergedBills.forEach((b: any) => {
+        const isPending = b.id.startsWith('pending_');
+        const consumption = Number(b.consumption || 0);
+        const work = b.workUnits || 0;
+
+        initU[b.id] = (work > 0 && consumption > 0) ? 'both' : (work > 0) ? 'work' : 'regular';
+
+        const sf = Number(b.serviceFee) || 0;
+        const fn = Number(b.fine) || 0;
+        const ex = Number(b.exemption) || 0;
+        const prevCalc = calcClient(consumption, work, sf, fn, ex);
+
+        initR[b.id] = {
+          currentReading: isPending ? Number(b.previousReading) : Number(b.currentReading),
+          workUnits: work,
+          meterPhotoUrl: b.meterPhotoUrl || null,
+          notes: b.notes || null,
+          consumption: prevCalc.consumption,
+          consumptionManual: false,
+          workUnitsTotal: prevCalc.workUnitsTotal,
+          consumptionCost: prevCalc.consumptionCost,
+          serviceFee: sf,
+          fine: fn,
+          exemption: ex,
+          totalAmount: prevCalc.totalAmount,
+        };
+      });
+      setReadings(initR);
+      setUnitTypes(initU);
     } catch (err: any) {
       alert(err.message || "حدث خطأ");
     } finally {

@@ -51,13 +51,12 @@ body {
   nav,
   aside,
   header,
-  button,
-  .btn,
-  .print-actions,
-  input[type="file"],
-  input,
-  select,
-  textarea {
+  .print-actions {
+    display: none !important;
+  }
+
+  /* Keep print button hidden during print */
+  button.no-print {
     display: none !important;
   }
 
@@ -75,7 +74,7 @@ body {
     width: 100% !important;
     max-width: 100% !important;
     margin: 0 !important;
-    padding: 0 !important;
+    padding: 0.5cm !important;
     box-shadow: none !important;
     border: none !important;
     background: transparent !important;
@@ -90,12 +89,26 @@ body {
   /* Remove browser added URL header/footer */
   @page {
     size: A4;
-    margin: 1.2cm 1cm 1.2cm 1cm;
+    margin: 0.8cm 0.6cm 0.8cm 0.6cm;
   }
 
   /* Ensure text colors print correctly */
   * {
     -webkit-print-color-adjust: exact !important;
     print-color-adjust: exact !important;
+  }
+
+  /* Force table borders and backgrounds */
+  table {
+    border-collapse: collapse !important;
+  }
+
+  td, th {
+    border-color: #000 !important;
+  }
+
+  /* Ensure images print */
+  img {
+    display: inline-block !important;
   }
 }

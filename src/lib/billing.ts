@@ -1,4 +1,4 @@
-import Decimal from 'decimal.js';
+﻿import Decimal from 'decimal.js';
 import { DEFAULT_PRICING } from './constants';
 
 interface BillingParams {
@@ -55,8 +55,13 @@ export function calculateBill(params: BillingParams): BillingResult {
   const fine = new Decimal(params.fine ?? 0);
   const exemption = new Decimal(params.exemption ?? 0);
   
-  // Total Bill = work + water tiers + service fees + fines - exemptions
-  const totalAmount = workUnitsTotal.plus(tier1Cost).plus(tier2Cost).plus(serviceFee).plus(fine).minus(exemption);
+  // Minimum fee floor: 1,000 YER applied on consumption cost
+  const rawConsumptionCost = tier1Cost.plus(tier2Cost);
+  const MINIMUM_FEE = new Decimal(1000);
+  const adjustedConsumptionCost = Decimal.max(rawConsumptionCost, MINIMUM_FEE);
+
+  // Total Bill = work + adjusted consumption cost + service fees + fines - exemptions
+  const totalAmount = workUnitsTotal.plus(adjustedConsumptionCost).plus(serviceFee).plus(fine).minus(exemption);
   
   return {
     consumption,
@@ -71,3 +76,5 @@ export function calculateBill(params: BillingParams): BillingResult {
     totalAmount,
   };
 }
+
+

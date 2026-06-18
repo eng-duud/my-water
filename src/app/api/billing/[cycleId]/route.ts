@@ -26,6 +26,7 @@ export async function GET(
         bills: {
           include: {
             customer: true,
+            billingCycle: true,
           },
           orderBy: {
             customer: {
@@ -40,15 +41,21 @@ export async function GET(
       return NextResponse.json({ error: 'دورة الفوترة غير موجودة' }, { status: 404 });
     }
 
-    // If cycle is DRAFT and has no bills, return all active customers for data entry
-    if (cycle.status === 'DRAFT' && cycle.bills.length === 0) {
-      const customers = await prisma.customer.findMany({
-        where: { tenantId: TENANT_ID, isActive: true },
+    // For DRAFT cycles: return pending customers (active customers without a bill in this cycle)
+    let pendingCustomers: any[] = [];
+    if (cycle.status === 'DRAFT') {
+      const existingCustomerIds = cycle.bills.map(b => b.customerId);
+      const customersWithoutBill = await prisma.customer.findMany({
+        where: {
+          tenantId: TENANT_ID,
+          isActive: true,
+          id: { notIn: existingCustomerIds },
+        },
         orderBy: { accountNumber: 'asc' },
       });
 
-      const customersWithReading = await Promise.all(
-        customers.map(async (customer) => {
+      pendingCustomers = await Promise.all(
+        customersWithoutBill.map(async (customer) => {
           const lastBill = await prisma.bill.findFirst({
             where: {
               tenantId: TENANT_ID,
@@ -70,30 +77,32 @@ export async function GET(
           };
         })
       );
-
-      return NextResponse.json({
-        ...cycle,
-        bills: [],
-        pendingCustomers: customersWithReading,
-      });
     }
 
     const billsWithPrevious = await Promise.all(
       (cycle.bills || []).map(async (bill) => {
-        const previousBill = await prisma.bill.findFirst({
+        const previousBills = await prisma.bill.findMany({
           where: {
             customerId: bill.customerId,
             tenantId: TENANT_ID,
             createdAt: { lt: bill.createdAt },
           },
           orderBy: {
-            createdAt: 'desc',
+            createdAt: 'asc',
           },
         });
+
+        let totalArrears = 0;
+        for (const pb of previousBills) {
+          const unpaid = Number(pb.totalAmount) - Number(pb.paidAmount);
+          if (unpaid > 0) totalArrears += unpaid;
+        }
+
         return {
           ...bill,
-          previousBillAmount: previousBill ? previousBill.totalAmount : 0,
-          previousBillPaid: previousBill ? previousBill.paidAmount : 0,
+          previousBillAmount: previousBills.length > 0 ? previousBills.reduce((sum, pb) => sum + Number(pb.totalAmount), 0) : 0,
+          previousBillPaid: previousBills.length > 0 ? previousBills.reduce((sum, pb) => sum + Number(pb.paidAmount), 0) : 0,
+          arrears: totalArrears,
         };
       })
     );
@@ -101,6 +110,7 @@ export async function GET(
     return NextResponse.json({
       ...cycle,
       bills: billsWithPrevious,
+      pendingCustomers,
     });
   } catch (error: any) {
     console.error('Fetch cycle detail error:', error);
