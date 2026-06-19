@@ -42,10 +42,10 @@ export function calculateBill(params: BillingParams): BillingResult {
     ? new Decimal(params.consumptionOverride)
     : Decimal.max(current.minus(previous), new Decimal(0));
   
-  // Work units fee
+  // Work units fee (separate flat fee, not added to tiered consumption)
   const workUnitsTotal = new Decimal(params.workUnits).times(wUnitPrice);
   
-  // Progressive tiered pricing
+  // Progressive tiered pricing (based on regular consumption only)
   const tier1Units = Decimal.min(consumption, t1Limit);
   const tier1Cost = tier1Units.times(t1Price);
   const tier2Units = Decimal.max(consumption.minus(t1Limit), new Decimal(0));
@@ -60,7 +60,7 @@ export function calculateBill(params: BillingParams): BillingResult {
   const MINIMUM_FEE = new Decimal(1000);
   const adjustedConsumptionCost = Decimal.max(rawConsumptionCost, MINIMUM_FEE);
 
-  // Total Bill = work + adjusted consumption cost + service fees + fines - exemptions
+  // Total Bill = work units fee + adjusted consumption cost + service fees + fines - exemptions
   const totalAmount = workUnitsTotal.plus(adjustedConsumptionCost).plus(serviceFee).plus(fine).minus(exemption);
   
   return {

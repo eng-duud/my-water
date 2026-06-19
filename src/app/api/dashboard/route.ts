@@ -90,6 +90,8 @@ export async function GET(request: NextRequest) {
       take: 5,
     });
 
+    const totalReceived = totalCollected + totalSurplus;
+
     return NextResponse.json({
       stats: {
         totalCustomers,
@@ -97,6 +99,7 @@ export async function GET(request: NextRequest) {
         totalConsumed,
         totalBilled,
         totalCollected,
+        totalReceived,
         totalDebt,
         totalSurplus,
       },

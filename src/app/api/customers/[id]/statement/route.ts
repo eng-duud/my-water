@@ -107,6 +107,8 @@ export async function GET(
     const totalPaid = transactions.reduce((sum, tx) => sum + tx.credit, 0);
     const currentBalance = totalBilled - totalPaid;
 
+    const totalConsumed = customer.bills.reduce((sum, bill) => sum + Number(bill.consumption) + Number(bill.workUnits), 0);
+
     return NextResponse.json({
       customer: {
         id: customer.id,
@@ -114,9 +116,9 @@ export async function GET(
         name: customer.name,
         phone: customer.phone,
         village: customer.village,
-        address: customer.address,
         meterNumber: customer.meterNumber,
         workUnits: Number(customer.workUnits),
+        totalConsumed,
       },
       transactions,
       summary: {

@@ -79,17 +79,26 @@ export async function GET(
       );
     }
 
+    const cycleYear = cycle.year;
+    const cycleMonth = cycle.month;
+
     const billsWithPrevious = await Promise.all(
       (cycle.bills || []).map(async (bill) => {
         const previousBills = await prisma.bill.findMany({
           where: {
             customerId: bill.customerId,
             tenantId: TENANT_ID,
-            createdAt: { lt: bill.createdAt },
+            billingCycle: {
+              OR: [
+                { year: { lt: cycleYear } },
+                { year: cycleYear, month: { lt: cycleMonth } },
+              ],
+            },
           },
-          orderBy: {
-            createdAt: 'asc',
-          },
+          orderBy: [
+            { billingCycle: { year: 'asc' } },
+            { billingCycle: { month: 'asc' } },
+          ],
         });
 
         let totalArrears = 0;

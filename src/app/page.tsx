@@ -3,16 +3,17 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 
-interface DashboardData {
-  stats: {
-    totalCustomers: number;
-    activeCustomers: number;
-    totalConsumed: number;
-    totalBilled: number;
-    totalCollected: number;
-    totalDebt: number;
-    totalSurplus: number;
-  };
+  interface DashboardData {
+    stats: {
+      totalCustomers: number;
+      activeCustomers: number;
+      totalConsumed: number;
+      totalBilled: number;
+      totalCollected: number;
+      totalReceived: number;
+      totalDebt: number;
+      totalSurplus: number;
+    };
   history: Array<{
     id: string;
     name: string;
@@ -154,14 +155,18 @@ export default function Dashboard() {
 
         <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm flex flex-col justify-between">
           <div className="flex justify-between items-start">
-            <span className="text-sm font-semibold text-slate-500">إجمالي المبالغ المحصلة</span>
+            <span className="text-sm font-semibold text-slate-500">إجمالي المبلغ المستلم</span>
             <span className="text-2xl">🟢</span>
           </div>
           <div className="mt-4">
             <h3 className="text-3xl font-extrabold text-emerald-600">
-              {data.stats.totalCollected.toLocaleString()}
+              {data.stats.totalReceived.toLocaleString()}
             </h3>
-            <p className="text-xs text-slate-500 mt-1">ريال يمني</p>
+            <p className="text-xs text-slate-500 mt-1">ريال يمني (بما في ذلك الرصيد الزائد)</p>
+          </div>
+          <div className="mt-2 text-[11px] text-slate-400 flex justify-between">
+            <span>موزع على الفواتير: {data.stats.totalCollected.toLocaleString()}</span>
+            <span>رصيد زائد: {data.stats.totalSurplus.toLocaleString()}</span>
           </div>
         </div>
 
@@ -298,10 +303,9 @@ export default function Dashboard() {
               <div>
                 <label className="block text-sm font-semibold text-slate-600 mb-1">السنة</label>
                 <input 
-                  type="number"
+                  type="text"
+                  inputMode="numeric"
                   required
-                  min={2000}
-                  max={2100}
                   value={newCycleYear}
                   onChange={(e) => setNewCycleYear(parseInt(e.target.value))}
                   className="w-full border border-slate-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500"

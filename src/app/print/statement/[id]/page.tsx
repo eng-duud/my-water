@@ -20,9 +20,9 @@ interface StatementData {
     name: string;
     phone: string | null;
     village: string | null;
-    address: string | null;
     meterNumber: string | null;
     workUnits: number;
+    totalConsumed: number;
   };
   transactions: Transaction[];
   summary: {
@@ -88,36 +88,33 @@ export default function StatementPrint() {
 
   return (
     <div className="print-container bg-white p-4 max-w-[21cm] mx-auto text-black font-sans dir-rtl space-y-4">
-      {/* HEADER */}
-      <div className="flex flex-col items-center border-b-2 border-black pb-3 space-y-4">
-        {/* Logo */}
-        <div className="relative">
-          <div className="absolute inset-0 bg-sky-500/10 blur-xl rounded-full -z-10"></div>
+      {/* HEADER: Logo centered with text on both sides */}
+      <div className="flex items-center justify-between border-b-2 border-black pb-3 gap-4">
+        {/* Right Section: Entity Info */}
+        <div className="text-right flex-1">
+          <h1 className="text-base font-extrabold text-gray-900">الجمهورية اليمنية - محافظة تعز</h1>
+          <h2 className="text-sm font-bold text-gray-800">مشروع مياه غيل الضياء قدس المواسط</h2>
+          <p className="text-[10px] text-gray-600 font-bold mt-1">كشف حساب مشترك</p>
+        </div>
+
+        {/* Center: Logo */}
+        <div className="shrink-0">
           <img
             src="/logo.png"
             alt="شعار المشروع"
-            className="w-24 h-24 object-contain drop-shadow-[0_5px_15px_rgba(0,0,0,0.2)] border-2 border-sky-100 rounded-full p-1 bg-white"
+            className="w-24 h-24 object-contain"
             onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }}
           />
         </div>
 
-        <div className="flex justify-between items-end w-full">
-          {/* Right Section: Entity Info */}
-          <div className="text-right flex-1">
-            <h1 className="text-base font-extrabold text-gray-900">الجمهورية اليمنية - محافظة تعز</h1>
-            <h2 className="text-sm font-bold text-gray-800">مشروع مياه غيل الضياء قدس المواسط</h2>
-            <p className="text-[10px] text-gray-600 font-bold mt-1">كشف حساب مشترك</p>
+        {/* Left Section: Statement Type */}
+        <div className="text-left flex-1 flex flex-col items-end">
+          <div className="bg-sky-100 border-2 border-sky-800 px-4 py-1 rounded shadow-sm">
+            <h2 className="text-xs font-black text-sky-900">كشف حساب</h2>
           </div>
-
-          {/* Left Section: Statement Type */}
-          <div className="text-left flex-1 flex flex-col items-end">
-            <div className="bg-sky-100 border-2 border-sky-800 px-4 py-1 rounded shadow-sm">
-              <h2 className="text-xs font-black text-sky-900">كشف حساب</h2>
-            </div>
-            <p className="text-[10px] text-gray-700 font-bold mt-1">
-              تاريخ الإصدار: {new Date().toLocaleDateString("ar-YE")}
-            </p>
-          </div>
+          <p className="text-[10px] text-gray-700 font-bold mt-1">
+            تاريخ الإصدار: {new Date().toLocaleDateString("ar-YE")}
+          </p>
         </div>
       </div>
 
@@ -141,16 +138,12 @@ export default function StatementPrint() {
             <span className="font-bold">{customer.village || "—"}</span>
           </div>
           <div>
-            <span className="text-gray-600">العنوان: </span>
-            <span className="font-bold">{customer.address || "—"}</span>
-          </div>
-          <div>
             <span className="text-gray-600">رقم العداد: </span>
             <span className="font-bold font-mono">{customer.meterNumber || "—"}</span>
           </div>
           <div>
-            <span className="text-gray-600">وحدات العمل: </span>
-            <span className="font-bold">{customer.workUnits}</span>
+            <span className="text-gray-600">الوحدات المستهلكة: </span>
+            <span className="font-bold">{formatNum(customer.totalConsumed)}</span>
           </div>
         </div>
       </div>

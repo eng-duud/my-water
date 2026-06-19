@@ -162,13 +162,12 @@ export default function PaymentsPage() {
       const res = await fetch("/api/payments", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          billIds: selectedBillIds,
-          amount: parseFloat(amount),
-          paymentMethod,
-          receiptNumber: receiptNumber || null,
-          notes: notes || null,
-        }),
+          body: JSON.stringify({
+            billIds: selectedBillIds,
+            amount: parseFloat(amount),
+            paymentMethod,
+            notes: notes || null,
+          }),
       });
 
       const resData = await res.json();
@@ -291,9 +290,9 @@ export default function PaymentsPage() {
             <div>
               <label className="block text-xs font-semibold text-slate-600 mb-1">المبلغ المدفوع (ريال يمني)</label>
               <input
-                type="number"
+                type="text"
+                inputMode="decimal"
                 required
-                min={1}
                 value={amount}
                 onChange={(e) => setAmount(e.target.value)}
                 className="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500 font-bold text-slate-700"
@@ -315,7 +314,7 @@ export default function PaymentsPage() {
                 </select>
               </div>
               <div>
-                <label className="block text-xs font-semibold text-slate-600 mb-1">رقم السند (تلقائي)</label>
+                <label className="block text-xs font-semibold text-slate-600 mb-1">رقم السند (متوقع)</label>
                 <div className="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm bg-slate-50 font-bold text-brand-700 font-mono">
                   {receiptNumber}
                 </div>

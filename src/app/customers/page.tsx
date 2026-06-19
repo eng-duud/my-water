@@ -9,7 +9,6 @@ interface Customer {
   name: string;
   phone: string | null;
   village: string | null;
-  address: string | null;
   workUnits: number | string;
   isActive: boolean;
   meterNumber: string | null;
@@ -29,7 +28,6 @@ export default function CustomersPage() {
   const [name, setName] = useState("");
   const [phone, setPhone] = useState("");
   const [village, setVillage] = useState("");
-  const [address, setAddress] = useState("");
   const [workUnits, setWorkUnits] = useState("1");
   const [isActive, setIsActive] = useState(true);
   const [meterNumber, setMeterNumber] = useState("");
@@ -60,7 +58,6 @@ export default function CustomersPage() {
     setName("");
     setPhone("");
     setVillage("");
-    setAddress("");
     setWorkUnits("1");
     setIsActive(true);
     setMeterNumber("");
@@ -74,7 +71,6 @@ export default function CustomersPage() {
     setName(c.name);
     setPhone(c.phone || "");
     setVillage(c.village || "");
-    setAddress(c.address || "");
     setWorkUnits(String(Number(c.workUnits)));
     setIsActive(c.isActive);
     setMeterNumber(c.meterNumber || "");
@@ -112,7 +108,6 @@ export default function CustomersPage() {
           name,
           phone: phone || null,
           village: village || null,
-          address: address || null,
           workUnits: parseFloat(workUnits) || 1,
           isActive,
           meterNumber: meterNumber || null,
@@ -184,7 +179,6 @@ export default function CustomersPage() {
                   <th className="p-4">الاسم</th>
                   <th className="p-4">الهاتف</th>
                   <th className="p-4">القرية</th>
-                  <th className="p-4">العنوان</th>
                   <th className="p-4">وحدات العمل</th>
                   <th className="p-4">رقم العداد</th>
                   <th className="p-4">الحالة</th>
@@ -213,7 +207,6 @@ export default function CustomersPage() {
                     </td>
                     <td className="p-4 text-slate-600">{c.phone || "—"}</td>
                     <td className="p-4 text-slate-600">{c.village || "—"}</td>
-                    <td className="p-4 text-slate-600">{c.address || "—"}</td>
                     <td className="p-4 text-slate-600 font-mono">{Number(c.workUnits)}</td>
                     <td className="p-4 text-slate-600">{c.meterNumber || "—"}</td>
                     <td className="p-4">
@@ -318,25 +311,26 @@ export default function CustomersPage() {
 
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-xs font-semibold text-slate-600 mb-1">العنوان / الحارة</label>
-                  <input
-                    type="text"
-                    value={address}
-                    onChange={(e) => setAddress(e.target.value)}
-                    className="w-full border border-slate-200 rounded-xl px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500"
-                    placeholder="مثال: حارة الوحدة"
-                  />
-                </div>
-                <div>
                   <label className="block text-xs font-semibold text-slate-600 mb-1">وحدات العمل</label>
                   <input
-                    type="number"
-                    step="0.01"
-                    min="0"
+                    type="text"
+                    inputMode="decimal"
+                    required
                     value={workUnits}
                     onChange={(e) => setWorkUnits(e.target.value)}
                     className="w-full border border-slate-200 rounded-xl px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500"
                     placeholder="مثال: 1 أو 0.5"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold text-slate-600 mb-1">رقم العداد</label>
+                  <input
+                    type="text"
+                    required
+                    value={meterNumber}
+                    onChange={(e) => setMeterNumber(e.target.value)}
+                    className="w-full border border-slate-200 rounded-xl px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500"
+                    placeholder="رقم العداد المطبوع"
                   />
                 </div>
               </div>
@@ -370,17 +364,6 @@ export default function CustomersPage() {
                     <span>غير نشط</span>
                   </button>
                 </div>
-              </div>
-
-              <div>
-                <label className="block text-xs font-semibold text-slate-600 mb-1">رقم العداد (اختياري)</label>
-                <input
-                  type="text"
-                  value={meterNumber}
-                  onChange={(e) => setMeterNumber(e.target.value)}
-                  className="w-full border border-slate-200 rounded-xl px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500"
-                  placeholder="رقم العداد المطبوع"
-                />
               </div>
 
               {/* Cloudinary Image Upload */}

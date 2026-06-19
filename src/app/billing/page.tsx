@@ -77,6 +77,7 @@ export default function BillingPage() {
     notes: string | null;
     actualConsumption: number;
     estimatedConsumption: number;
+    readingWarning: boolean;
     workUnitsTotal: number;
     consumptionCost: number;
     serviceFee: number;
@@ -156,13 +157,22 @@ export default function BillingPage() {
         const storedConsumption = Number(b.consumption || 0);
         const work = Number(b.workUnits) || 0;
         const prevReading = Number(b.previousReading);
-        const currReading = isPending ? prevReading : Number(b.currentReading);
-        const actualConsumption = Math.max(currReading - prevReading, 0);
-        const estimatedConsumption = (storedConsumption > 0 && Math.abs(storedConsumption - actualConsumption) > 0.01) ? storedConsumption : 0;
 
-        const effectiveConsumption = estimatedConsumption > 0 ? estimatedConsumption : actualConsumption;
+        // currentReading = previousReading + regularUnits + workUnits
+        const currReading = isPending && work > 0
+          ? prevReading + work
+          : (isPending ? prevReading : Number(b.currentReading));
 
-        initU[b.id] = (work > 0 && effectiveConsumption > 0) ? 'both' : (work > 0) ? 'work' : 'regular';
+        // total consumption = curr - prev (includes work units for display)
+        const totalConsumption = Math.max(currReading - prevReading, 0);
+        // regular consumption for tiered pricing (excludes work units)
+        const regularConsumption = Math.max(totalConsumption - work, 0);
+
+        const estimatedConsumption = (storedConsumption > 0 && Math.abs(storedConsumption - totalConsumption) > 0.01) ? storedConsumption : 0;
+
+        const effectiveConsumption = estimatedConsumption > 0 ? estimatedConsumption : regularConsumption;
+
+        initU[b.id] = (work > 0 && totalConsumption > 0) ? 'both' : (work > 0) ? 'work' : 'regular';
 
         const sf = Number(b.serviceFee) || 0;
         const fn = Number(b.fine) || 0;
@@ -174,8 +184,9 @@ export default function BillingPage() {
           workUnits: work,
           meterPhotoUrl: b.meterPhotoUrl || null,
           notes: b.notes || null,
-          actualConsumption,
+          actualConsumption: totalConsumption,
           estimatedConsumption: estimatedConsumption,
+          readingWarning: currReading < prevReading,
           workUnitsTotal: prevCalc.workUnitsTotal,
           consumptionCost: prevCalc.consumptionCost,
           serviceFee: sf,
@@ -211,12 +222,14 @@ export default function BillingPage() {
     const fine = overrides?.fine ?? r.fine;
     const exemption = overrides?.exemption ?? r.exemption;
 
-    const actualConsumption = Math.max(current - previous, 0);
+    const readingWarning = current < previous;
+    const totalConsumption = Math.max(current - previous, 0);
+    const regularConsumption = Math.max(totalConsumption - work, 0);
     const estimatedConsumption = overrides?.estimatedConsumption !== undefined
       ? overrides.estimatedConsumption
       : (overrides?.currentReading !== undefined ? 0 : r.estimatedConsumption);
 
-    const effectiveConsumption = estimatedConsumption > 0 ? estimatedConsumption : actualConsumption;
+    const effectiveConsumption = estimatedConsumption > 0 ? estimatedConsumption : regularConsumption;
 
     const calc = calcClient(effectiveConsumption, work, serviceFee, fine, exemption);
     setReadings(prev => ({
@@ -225,8 +238,9 @@ export default function BillingPage() {
         ...prev[billId],
         currentReading: current,
         workUnits: work,
-        actualConsumption,
+        actualConsumption: totalConsumption,
         estimatedConsumption,
+        readingWarning,
         workUnitsTotal: calc.workUnitsTotal,
         consumptionCost: calc.consumptionCost,
         serviceFee,
@@ -243,7 +257,8 @@ export default function BillingPage() {
     if (!bill) return;
 
     if (unitType === 'regular') {
-      recalc(billId, { workUnits: 0 });
+      const defaultWork = Number(bill.workUnits) || 1;
+      recalc(billId, { workUnits: defaultWork });
     } else if (unitType === 'work') {
       const defaultWork = Number(bill.workUnits) || 1;
       recalc(billId, { workUnits: defaultWork });
@@ -307,10 +322,14 @@ export default function BillingPage() {
 
     try {
       setSavingBillId(billId);
+      // Regular consumption for pricing (excludes work units)
+      const regularConsumption = Math.max(data.actualConsumption - data.workUnits, 0);
       const entry: any = {
         currentReading: data.currentReading,
         workUnits: data.workUnits,
-        consumption: data.estimatedConsumption > 0 ? data.estimatedConsumption : undefined,
+        consumption: data.estimatedConsumption > 0
+          ? data.estimatedConsumption
+          : (regularConsumption > 0 ? regularConsumption : 0),
         serviceFee: data.serviceFee,
         fine: data.fine,
         exemption: data.exemption,
@@ -349,10 +368,13 @@ export default function BillingPage() {
         const bill = bills.find(b => b.id === id);
         if (!bill) return null;
 
+        const regularConsumption = Math.max(data.actualConsumption - data.workUnits, 0);
         const entry: any = {
           currentReading: data.currentReading,
           workUnits: data.workUnits,
-          consumption: data.estimatedConsumption > 0 ? data.estimatedConsumption : undefined,
+          consumption: data.estimatedConsumption > 0
+            ? data.estimatedConsumption
+            : (regularConsumption > 0 ? regularConsumption : 0),
           serviceFee: data.serviceFee,
           fine: data.fine,
           exemption: data.exemption,
@@ -572,14 +594,19 @@ export default function BillingPage() {
                           {/* Current Reading */}
                           <td className="p-2">
                             {(ut === 'regular' || ut === 'both') ? (
-                              <input
-                                type="text"
-                                inputMode="decimal"
-                                disabled={!canEdit}
-                                value={r?.currentReading ?? Number(b.previousReading)}
-                                onChange={(e) => handleReadingChange(b.id, e.target.value)}
-                                className="w-20 border border-slate-200 rounded-lg p-1 text-center font-bold text-slate-700 focus:outline-none focus:ring-1 focus:ring-brand-500 disabled:bg-slate-50 disabled:text-slate-400 no-spinner"
-                              />
+                              <div className="flex items-center space-x-1 space-x-reverse">
+                                <input
+                                  type="text"
+                                  inputMode="decimal"
+                                  disabled={!canEdit}
+                                  value={r?.currentReading ?? Number(b.previousReading)}
+                                  onChange={(e) => handleReadingChange(b.id, e.target.value)}
+                                  className="w-20 border border-slate-200 rounded-lg p-1 text-center font-bold text-slate-700 focus:outline-none focus:ring-1 focus:ring-brand-500 disabled:bg-slate-50 disabled:text-slate-400 no-spinner"
+                                />
+                                {r?.readingWarning && (
+                                  <span className="text-amber-500 text-xs cursor-help" title="القراءة الحالية أقل من القراءة السابقة!">⚠️</span>
+                                )}
+                              </div>
                             ) : '—'}
                           </td>
 
@@ -587,9 +614,8 @@ export default function BillingPage() {
                           <td className="p-2">
                             {(ut === 'work' || ut === 'both') ? (
                               <input
-                                type="number"
-                                step="0.01"
-                                min={0}
+                                type="text"
+                                inputMode="decimal"
                                 disabled={!canEdit}
                                 value={r?.workUnits ?? 0}
                                 onChange={(e) => handleWorkUnitsChange(b.id, e.target.value)}

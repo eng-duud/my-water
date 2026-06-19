@@ -27,15 +27,22 @@ export async function GET(request: NextRequest) {
     }
 
     // Fetch ALL previous unpaid bills for arrears calculation
+    const bc = bill.billingCycle;
     const previousBills = await prisma.bill.findMany({
       where: {
         customerId: bill.customerId,
         tenantId: TENANT_ID,
-        createdAt: { lt: bill.createdAt },
+        billingCycle: {
+          OR: [
+            { year: { lt: bc.year } },
+            { year: bc.year, month: { lt: bc.month } },
+          ],
+        },
       },
-      orderBy: {
-        createdAt: 'asc',
-      },
+      orderBy: [
+        { billingCycle: { year: 'asc' } },
+        { billingCycle: { month: 'asc' } },
+      ],
     });
 
     // Sum of arrears = total amounts - paid amounts across ALL previous bills

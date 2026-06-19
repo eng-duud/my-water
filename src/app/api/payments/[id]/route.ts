@@ -39,16 +39,26 @@ export async function GET(
     let totalArrearsBefore = 0;
     if (payment.allocations.length > 0) {
       const firstBill = payment.allocations[0].bill;
-      const previousBills = await prisma.bill.findMany({
-        where: {
-          customerId: payment.customerId,
-          tenantId: TENANT_ID,
-          createdAt: { lt: firstBill.createdAt },
-        },
+      const firstBillCycle = await prisma.billingCycle.findUnique({
+        where: { id: firstBill.billingCycleId },
       });
-      for (const pb of previousBills) {
-        const unpaid = Number(pb.totalAmount) - Number(pb.paidAmount);
-        if (unpaid > 0) totalArrearsBefore += unpaid;
+      if (firstBillCycle) {
+        const previousBills = await prisma.bill.findMany({
+          where: {
+            customerId: payment.customerId,
+            tenantId: TENANT_ID,
+            billingCycle: {
+              OR: [
+                { year: { lt: firstBillCycle.year } },
+                { year: firstBillCycle.year, month: { lt: firstBillCycle.month } },
+              ],
+            },
+          },
+        });
+        for (const pb of previousBills) {
+          const unpaid = Number(pb.totalAmount) - Number(pb.paidAmount);
+          if (unpaid > 0) totalArrearsBefore += unpaid;
+        }
       }
     }
 
