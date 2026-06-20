@@ -10,6 +10,7 @@ interface Customer {
   phone: string | null;
   village: string | null;
   workUnits: number | string;
+  initialReading: number | string;
   isActive: boolean;
   meterNumber: string | null;
   photoUrl: string | null;
@@ -28,7 +29,8 @@ export default function CustomersPage() {
   const [name, setName] = useState("");
   const [phone, setPhone] = useState("");
   const [village, setVillage] = useState("");
-  const [workUnits, setWorkUnits] = useState("1");
+  const [workUnits] = useState("0");
+  const [initialReading, setInitialReading] = useState("0");
   const [isActive, setIsActive] = useState(true);
   const [meterNumber, setMeterNumber] = useState("");
   const [photoUrl, setPhotoUrl] = useState("");
@@ -58,7 +60,7 @@ export default function CustomersPage() {
     setName("");
     setPhone("");
     setVillage("");
-    setWorkUnits("1");
+    setInitialReading("0");
     setIsActive(true);
     setMeterNumber("");
     setPhotoUrl("");
@@ -71,7 +73,7 @@ export default function CustomersPage() {
     setName(c.name);
     setPhone(c.phone || "");
     setVillage(c.village || "");
-    setWorkUnits(String(Number(c.workUnits)));
+    setInitialReading(String(Number(c.initialReading)));
     setIsActive(c.isActive);
     setMeterNumber(c.meterNumber || "");
     setPhotoUrl(c.photoUrl || "");
@@ -108,7 +110,8 @@ export default function CustomersPage() {
           name,
           phone: phone || null,
           village: village || null,
-          workUnits: parseFloat(workUnits) || 1,
+          workUnits: 0,
+          initialReading: parseFloat(initialReading) || 0,
           isActive,
           meterNumber: meterNumber || null,
           photoUrl: photoUrl || null,
@@ -311,15 +314,15 @@ export default function CustomersPage() {
 
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-xs font-semibold text-slate-600 mb-1">وحدات العمل</label>
+                  <label className="block text-xs font-semibold text-slate-600 mb-1">القراءة الابتدائية</label>
                   <input
                     type="text"
                     inputMode="decimal"
                     required
-                    value={workUnits}
-                    onChange={(e) => setWorkUnits(e.target.value)}
+                    value={initialReading}
+                    onChange={(e) => setInitialReading(e.target.value)}
                     className="w-full border border-slate-200 rounded-xl px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500"
-                    placeholder="مثال: 1 أو 0.5"
+                    placeholder="مثال: 0 أو 100"
                   />
                 </div>
                 <div>

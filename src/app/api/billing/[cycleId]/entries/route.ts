@@ -115,7 +115,7 @@ export async function POST(
                 orderBy: { createdAt: 'desc' },
               });
 
-              const prevReading = lastBill ? Number(lastBill.currentReading) : 0;
+              const prevReading = lastBill ? Number(lastBill.currentReading) : Number(customer.initialReading || 0);
               const monthPadded = String(cycle.month).padStart(2, '0');
               const billNumber = `INV-${cycle.year}${monthPadded}-${customer.accountNumber}`;
               const effectiveWorkUnits = entry.workUnits !== undefined ? entry.workUnits : customer.workUnits;

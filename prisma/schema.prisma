@@ -41,7 +41,8 @@ model Customer {
   phone         String?
   village       String?
   address       String?
-  workUnits     Decimal  @default(1) @db.Decimal(12, 2)
+  workUnits     Decimal  @default(0) @db.Decimal(12, 2)
+  initialReading Decimal @default(0) @db.Decimal(12, 2)
   isActive      Boolean  @default(true)
   meterNumber   String?
   photoUrl      String?

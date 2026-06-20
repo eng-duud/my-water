@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
 import { numberToArabicWords } from "@/lib/num-to-words";
+import { generatePrintFilename } from "@/lib/print-filename";
 
 interface ReceiptData {
   id: string;
@@ -74,6 +75,7 @@ export default function ReceiptPrint() {
 
   useEffect(() => {
     if (receipt) {
+      document.title = generatePrintFilename('سند قبض', receipt.customer.name);
       const timer = setTimeout(() => {
         window.print();
       }, 800);

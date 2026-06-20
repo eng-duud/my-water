@@ -18,12 +18,14 @@ export async function GET(request: NextRequest) {
       where: { tenantId: TENANT_ID },
       _sum: {
         consumption: true,
+        workUnits: true,
         totalAmount: true,
         paidAmount: true,
       },
     });
 
-    const totalConsumed = billStats._sum.consumption ? Number(billStats._sum.consumption) : 0;
+    const totalConsumed = (billStats._sum.consumption ? Number(billStats._sum.consumption) : 0)
+      + (billStats._sum.workUnits ? Number(billStats._sum.workUnits) : 0);
     const totalBilled = billStats._sum.totalAmount ? Number(billStats._sum.totalAmount) : 0;
     const totalCollected = billStats._sum.paidAmount ? Number(billStats._sum.paidAmount) : 0;
     const totalDebt = Math.max(totalBilled - totalCollected, 0);
@@ -62,7 +64,7 @@ export async function GET(request: NextRequest) {
 
     const history = cycles.map((c: any) => {
       const billCount = c.bills.length;
-      const consumed = c.bills.reduce((acc: any, b: any) => acc + Number(b.consumption), 0);
+      const consumed = c.bills.reduce((acc: any, b: any) => acc + Number(b.consumption) + Number(b.workUnits), 0);
       const billed = c.bills.reduce((acc: any, b: any) => acc + Number(b.totalAmount), 0);
       const collected = c.bills.reduce((acc: any, b: any) => acc + Number(b.paidAmount), 0);
       return {

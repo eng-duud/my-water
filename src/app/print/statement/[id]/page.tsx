@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
+import { generatePrintFilename } from "@/lib/print-filename";
 
 interface Transaction {
   date: string;
@@ -59,6 +60,7 @@ export default function StatementPrint() {
 
   useEffect(() => {
     if (data) {
+      document.title = generatePrintFilename('كشف حساب', data.customer.name);
       const timer = setTimeout(() => {
         window.print();
       }, 800);

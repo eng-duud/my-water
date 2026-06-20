@@ -63,7 +63,7 @@ export async function GET(
             },
             orderBy: { createdAt: 'desc' },
           });
-          const prevReading = lastBill ? Number(lastBill.currentReading) : 0;
+          const prevReading = lastBill ? Number(lastBill.currentReading) : Number(customer.initialReading || 0);
           const monthPadded = String(cycle.month).padStart(2, '0');
           return {
             customerId: customer.id,

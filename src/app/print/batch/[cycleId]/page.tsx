@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
 import { numberToArabicWords } from "@/lib/num-to-words";
+import { generatePrintFilename } from "@/lib/print-filename";
 
 interface BillData {
   id: string;
@@ -67,6 +68,9 @@ export default function BatchBillsPrint() {
 
   useEffect(() => {
     if (bills.length > 0) {
+      const first = bills[0];
+      const cycleLabel = `${first.billingCycle.year}/${String(first.billingCycle.month).padStart(2, '0')}`;
+      document.title = generatePrintFilename('فواتير', `الدورة ${cycleLabel}`);
       const timer = setTimeout(() => {
         window.print();
       }, 1000);
