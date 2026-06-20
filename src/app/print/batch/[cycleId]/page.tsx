@@ -130,7 +130,7 @@ export default function BatchBillsPrint() {
 
         const totalWords = numberToArabicWords(Math.round(grandTotal));
 
-        const formatNum = (n: number) => n.toLocaleString("en-US");
+        const formatNum = (n: number | null | undefined) => (n ?? 0).toLocaleString("en-US");
         const readingFormat = (n: number) => n.toFixed(2);
 
         return (

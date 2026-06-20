@@ -701,7 +701,7 @@ export default function BillingPage() {
                           {/* Arrears */}
                           <td className="p-2">
                             <span className="font-bold text-rose-600">
-                              {(r?.arrears ?? 0) > 0 ? (r.arrears.toLocaleString() + ' ريال') : '—'}
+                              {(r?.arrears ?? 0) > 0 ? ((r?.arrears ?? 0).toLocaleString() + ' ريال') : '—'}
                             </span>
                           </td>
 

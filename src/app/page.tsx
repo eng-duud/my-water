@@ -134,7 +134,7 @@ export default function Dashboard() {
           </div>
           <div className="mt-4">
             <h3 className="text-3xl font-extrabold text-slate-800">
-              {data.stats.totalConsumed.toLocaleString()}
+              {(data.stats.totalConsumed ?? 0).toLocaleString()}
             </h3>
             <p className="text-xs text-slate-500 mt-1">وحدة استهلاك تراكمية</p>
           </div>
@@ -147,7 +147,7 @@ export default function Dashboard() {
           </div>
           <div className="mt-4">
             <h3 className="text-3xl font-extrabold text-slate-800">
-              {data.stats.totalBilled.toLocaleString()}
+              {(data.stats.totalBilled ?? 0).toLocaleString()}
             </h3>
             <p className="text-xs text-slate-500 mt-1">ريال يمني</p>
           </div>
@@ -160,13 +160,13 @@ export default function Dashboard() {
           </div>
           <div className="mt-4">
             <h3 className="text-3xl font-extrabold text-emerald-600">
-              {data.stats.totalReceived.toLocaleString()}
+              {(data.stats.totalReceived ?? 0).toLocaleString()}
             </h3>
             <p className="text-xs text-slate-500 mt-1">ريال يمني (بما في ذلك الرصيد الزائد)</p>
           </div>
           <div className="mt-2 text-[11px] text-slate-400 flex justify-between">
-            <span>موزع على الفواتير: {data.stats.totalCollected.toLocaleString()}</span>
-            <span>رصيد زائد: {data.stats.totalSurplus.toLocaleString()}</span>
+            <span>موزع على الفواتير: {(data.stats.totalCollected ?? 0).toLocaleString()}</span>
+            <span>رصيد زائد: {(data.stats.totalSurplus ?? 0).toLocaleString()}</span>
           </div>
         </div>
 
@@ -177,7 +177,7 @@ export default function Dashboard() {
           </div>
           <div className="mt-4">
             <h3 className="text-3xl font-extrabold text-rose-600">
-              {data.stats.totalDebt.toLocaleString()}
+              {(data.stats.totalDebt ?? 0).toLocaleString()}
             </h3>
             <p className="text-xs text-slate-500 mt-1">ريال يمني مستحق</p>
           </div>
@@ -192,7 +192,7 @@ export default function Dashboard() {
             <div>
               <p className="font-bold">تنبيه وجود رصيد زائد معلق</p>
               <p className="text-sm mt-0.5">
-                يوجد إجمالي رصيد معلق بقيمة <span className="font-bold">{data.stats.totalSurplus.toLocaleString()}</span> ريال يمني لم يتم تخصيصه للفواتير المستقبلية.
+                يوجد إجمالي رصيد معلق بقيمة <span className="font-bold">{(data.stats.totalSurplus ?? 0).toLocaleString()}</span> ريال يمني لم يتم تخصيصه للفواتير المستقبلية.
               </p>
             </div>
           </div>
@@ -230,13 +230,13 @@ export default function Dashboard() {
                         </span>
                       </div>
                       <div className="text-slate-500 text-xs">
-                        {h.billCount} فاتورة | استهلاك {h.consumed.toLocaleString()} وحدة
+                        {h.billCount} فاتورة | استهلاك {(h.consumed ?? 0).toLocaleString()} وحدة
                       </div>
                     </div>
 
                     <div className="grid grid-cols-2 gap-4 text-xs font-semibold">
-                      <div>المفوتر: {h.billed.toLocaleString()} ريال</div>
-                      <div className="text-left text-emerald-600">المحصل: {h.collected.toLocaleString()} ريال ({collectionRate.toFixed(1)}%)</div>
+                      <div>المفوتر: {(h.billed ?? 0).toLocaleString()} ريال</div>
+                      <div className="text-left text-emerald-600">المحصل: {(h.collected ?? 0).toLocaleString()} ريال ({collectionRate.toFixed(1)}%)</div>
                     </div>
 
                     {/* Progress bar */}
@@ -273,9 +273,9 @@ export default function Dashboard() {
                     <p className="text-slate-400 text-xs">{new Date(payment.createdAt).toLocaleDateString('ar-YE')}</p>
                   </div>
                   <div className="text-left">
-                    <p className="font-bold text-emerald-600 text-sm">{payment.amount.toLocaleString()} ريال</p>
+                    <p className="font-bold text-emerald-600 text-sm">{(payment.amount ?? 0).toLocaleString()} ريال</p>
                     {payment.surplusAmount > 0 && (
-                      <p className="text-amber-600 text-xs">رصيد زائد: {payment.surplusAmount.toLocaleString()}</p>
+                      <p className="text-amber-600 text-xs">رصيد زائد: {(payment.surplusAmount ?? 0).toLocaleString()}</p>
                     )}
                   </div>
                 </div>

@@ -272,14 +272,14 @@ export default function PaymentsPage() {
                           <span className="font-bold text-slate-800 block">{b.billNumber}</span>
                           <span className="text-slate-500">
                             {ARABIC_MONTHS[b.billingCycle.month]} {b.billingCycle.year} — 
-                            المتبقي: <span className="font-bold text-amber-600">{b.unpaidAmount.toLocaleString()} ريال</span>
+                            المتبقي: <span className="font-bold text-amber-600">{(b.unpaidAmount ?? 0).toLocaleString()} ريال</span>
                           </span>
                         </div>
                       </label>
                     ))}
                     {selectedBillIds.length > 0 && (
                       <div className="text-[11px] bg-brand-50 text-brand-800 p-2 rounded-lg font-semibold text-center">
-                        إجمالي المحدد: {totalUnpaidSelected.toLocaleString()} ريال ({selectedBillIds.length} فاتورة)
+                        إجمالي المحدد: {(totalUnpaidSelected ?? 0).toLocaleString()} ريال ({selectedBillIds.length} فاتورة)
                       </div>
                     )}
                   </div>
@@ -342,15 +342,15 @@ export default function PaymentsPage() {
                   </div>
                   <div className="flex justify-between text-slate-600">
                     <span>إجمالي المطلوب:</span>
-                    <span className="font-bold text-amber-600">{totalUnpaidSelected.toLocaleString()} ريال</span>
+                    <span className="font-bold text-amber-600">{(totalUnpaidSelected ?? 0).toLocaleString()} ريال</span>
                   </div>
                   <div className="flex justify-between text-slate-600 border-t border-slate-200 pt-1">
                     <span>سيتم توزيع:</span>
-                    <span className="font-bold text-emerald-600">{allocateAmount.toLocaleString()} ريال</span>
+                    <span className="font-bold text-emerald-600">{(allocateAmount ?? 0).toLocaleString()} ريال</span>
                   </div>
                   {isOverpayment && (
                     <div className="bg-amber-100 text-amber-900 p-2 rounded-lg text-xs font-semibold mt-2">
-                      ⚠️ سيتم تسجيل مبلغ <span className="underline">{surplusAmount.toLocaleString()} ريال</span> كرصيد زائد معلق.
+                      ⚠️ سيتم تسجيل مبلغ <span className="underline">{(surplusAmount ?? 0).toLocaleString()} ريال</span> كرصيد زائد معلق.
                     </div>
                   )}
                 </div>
@@ -404,9 +404,9 @@ export default function PaymentsPage() {
                         <td className="p-3 font-semibold text-slate-800">{p.customer.name}</td>
                         <td className="p-3 font-mono text-slate-600 text-[10px]">{billLabels || "—"}</td>
                         <td className="p-3 text-slate-600 text-[10px]">{cycleLabels || "—"}</td>
-                        <td className="p-3 font-bold text-slate-700">{Number(p.amount).toLocaleString()} ريال</td>
-                        <td className="p-3 text-emerald-600 font-semibold">{Number(p.allocatedAmount).toLocaleString()} ريال</td>
-                        <td className="p-3 text-amber-600 font-semibold">{Number(p.surplusAmount).toLocaleString()} ريال</td>
+                        <td className="p-3 font-bold text-slate-700">{(Number(p.amount) ?? 0).toLocaleString()} ريال</td>
+                        <td className="p-3 text-emerald-600 font-semibold">{(Number(p.allocatedAmount) ?? 0).toLocaleString()} ريال</td>
+                        <td className="p-3 text-amber-600 font-semibold">{(Number(p.surplusAmount) ?? 0).toLocaleString()} ريال</td>
                         <td className="p-3">
                           {Number(p.surplusAmount) === 0 ? (
                             <span className="text-slate-400">—</span>
@@ -463,7 +463,7 @@ export default function PaymentsPage() {
                   المشترك: <span className="font-bold text-slate-800">{selectedPaymentForSurplus.customer.name}</span>
                 </p>
                 <p className="text-sm text-slate-600 mt-1">
-                  الرصيد المعلق: <span className="font-bold text-amber-600">{Number(selectedPaymentForSurplus.surplusAmount).toLocaleString()} ريال</span>
+                  الرصيد المعلق: <span className="font-bold text-amber-600">{(selectedPaymentForSurplus ? Number(selectedPaymentForSurplus.surplusAmount) : 0).toLocaleString()} ريال</span>
                 </p>
               </div>
 

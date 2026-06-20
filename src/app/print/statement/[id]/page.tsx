@@ -85,7 +85,7 @@ export default function StatementPrint() {
   }
 
   const { customer, transactions, summary } = data;
-  const formatNum = (n: number) => n.toLocaleString("en-US");
+  const formatNum = (n: number | null | undefined) => (n ?? 0).toLocaleString("en-US");
   const formatDate = (d: string) => new Date(d).toLocaleDateString("ar-YE");
 
   return (

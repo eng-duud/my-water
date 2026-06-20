@@ -105,7 +105,7 @@ export default function ReceiptPrint() {
     return sum + Math.max(unpaid, 0);
   }, 0);
   const totalWords = numberToArabicWords(Math.round(receipt.amount));
-  const formatNum = (n: number) => n.toLocaleString("en-US");
+  const formatNum = (n: number | null | undefined) => (n ?? 0).toLocaleString("en-US");
 
   return (
     <div className="print-container bg-white p-4 max-w-[21cm] mx-auto text-black font-sans dir-rtl space-y-3">
