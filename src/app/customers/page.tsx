@@ -20,6 +20,7 @@ export default function CustomersPage() {
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
+  const [selectedVillage, setSelectedVillage] = useState("");
   const [showModal, setShowModal] = useState(false);
   const [submitting, setSubmitting] = useState(false);
 
@@ -132,12 +133,17 @@ export default function CustomersPage() {
     }
   };
 
+  const uniqueVillages = Array.from(
+    new Set(customers.map((c) => c.village).filter(Boolean))
+  ) as string[];
+
   const filteredCustomers = customers.filter(
     (c) =>
-      c.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      c.accountNumber.includes(searchQuery) ||
-      (c.phone && c.phone.includes(searchQuery)) ||
-      (c.village && c.village.toLowerCase().includes(searchQuery.toLowerCase()))
+      (selectedVillage === "" || c.village === selectedVillage) &&
+      (c.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        c.accountNumber.includes(searchQuery) ||
+        (c.phone && c.phone.includes(searchQuery)) ||
+        (c.village && c.village.toLowerCase().includes(searchQuery.toLowerCase())))
   );
 
   return (
@@ -155,16 +161,50 @@ export default function CustomersPage() {
         </button>
       </div>
 
-      {/* Search Filter Bar */}
-      <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm flex items-center">
-        <span className="text-slate-400 ml-2">🔍</span>
-        <input
-          type="text"
-          placeholder="ابحث باسم المشترك، رقم الحساب، الهاتف، أو القرية..."
-          value={searchQuery}
-          onChange={(e) => setSearchQuery(e.target.value)}
-          className="w-full bg-transparent border-none text-sm focus:outline-none focus:ring-0 placeholder:text-slate-400"
-        />
+      {/* Search & Filter Bar */}
+      <div className="flex flex-col md:flex-row gap-4 items-stretch md:items-center">
+        <div className="flex-1 bg-white p-4 rounded-xl border border-slate-200 shadow-sm flex items-center">
+          <span className="text-slate-400 ml-2">🔍</span>
+          <input
+            type="text"
+            placeholder="ابحث باسم المشترك، رقم الحساب، الهاتف، أو القرية..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="w-full bg-transparent border-none text-sm focus:outline-none focus:ring-0 placeholder:text-slate-400"
+          />
+        </div>
+
+        <div className="flex flex-col sm:flex-row gap-3 items-stretch">
+          {/* Village Filter Dropdown */}
+          <div className="relative shrink-0 min-w-[180px]">
+            <select
+              value={selectedVillage}
+              onChange={(e) => setSelectedVillage(e.target.value)}
+              className="w-full bg-white border border-slate-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500 shadow-sm appearance-none cursor-pointer pr-8 font-semibold text-slate-700"
+            >
+              <option value="">كل القرى</option>
+              {uniqueVillages.map((v) => (
+                <option key={v} value={v}>
+                  قرية: {v}
+                </option>
+              ))}
+            </select>
+            <div className="pointer-events-none absolute inset-y-0 left-3 flex items-center text-slate-500">
+              ▼
+            </div>
+          </div>
+
+          {/* Unified Village Statement Button */}
+          {selectedVillage && (
+            <a
+              href={`/print/statement/village?village=${encodeURIComponent(selectedVillage)}`}
+              target="_blank"
+              className="bg-sky-600 hover:bg-sky-700 text-white font-bold text-sm px-5 py-2.5 rounded-xl shadow-sm transition-colors flex items-center justify-center gap-2 whitespace-nowrap"
+            >
+              <span>🖨️ كشف حساب القرية</span>
+            </a>
+          )}
+        </div>
       </div>
 
       {/* Table List */}
